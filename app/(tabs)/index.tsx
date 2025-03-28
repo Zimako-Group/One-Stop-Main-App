@@ -1,0 +1,535 @@
+import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { router } from 'expo-router';
+
+export default function Home() {
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleLogout = () => {
+    setShowMenu(false);
+    // TODO: Implement logout logic
+    router.replace('/(auth)');
+  };
+
+  const navigateToBuyServices = (serviceType: 'airtime' | 'data' | null = null) => {
+    router.push({
+      pathname: '/(tabs)/buy-services',
+      params: { serviceType }
+    });
+  };
+
+  const navigateToPayBills = () => {
+    router.push('/(tabs)/pay-bills');
+  };
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#1a237e', '#0d47a1', '#01579b']}
+        style={[StyleSheet.absoluteFill, styles.backgroundGradient]}
+      />
+      
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#1a237e', '#1a237e']}
+          style={styles.headerBackground}
+        />
+        <Animated.View 
+          entering={FadeInDown.delay(200).duration(1000)}
+          style={styles.header}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.greeting}>Sawubona! 👋</Text>
+              <Text style={styles.subGreeting}>Welcome back</Text>
+            </View>
+            <Pressable 
+              style={styles.profileButton}
+              onPress={() => setShowMenu(true)}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                style={styles.profileButtonGradient}>
+                <Ionicons name="person-outline" size={24} color="#fff" />
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        {/* Balance Card */}
+        <Animated.View 
+          entering={FadeInDown.delay(400).duration(1000)}
+          style={styles.cardContainer}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+            style={styles.card}>
+            <View style={styles.balanceHeader}>
+              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Ionicons name="wallet-outline" size={24} color="rgba(255,255,255,0.9)" />
+            </View>
+            <Text style={styles.balanceAmount}>E150.00</Text>
+            <Pressable style={styles.topUpButton}>
+              <Text style={styles.topUpButtonText}>Top Up Balance</Text>
+            </Pressable>
+          </LinearGradient>
+        </Animated.View>
+      </View>
+
+      {/* Scrollable Content */}
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollViewContent}>
+        {/* Buy Airtime/Data Section */}
+        <Animated.View 
+          entering={FadeInDown.delay(600).duration(1000)}
+          style={styles.airtimeSection}>
+          <LinearGradient
+            colors={['#fff', '#f8f9fa']}
+            style={styles.airtimeContainer}>
+            <Pressable 
+              style={styles.buyButton}
+              onPress={() => navigateToBuyServices()}>
+              <View style={styles.buyButtonContent}>
+                <View style={styles.buyButtonLeft}>
+                  <Ionicons name="phone-portrait-outline" size={24} color="#1a237e" style={styles.buyButtonIcon} />
+                  <Text style={styles.buyButtonText}>Buy Airtime/Data</Text>
+                </View>
+                <LinearGradient
+                  colors={['#1a237e', '#0d47a1']}
+                  style={styles.buyButtonArrow}>
+                  <Ionicons name="chevron-forward" size={24} color="#fff" />
+                </LinearGradient>
+              </View>
+            </Pressable>
+
+            <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+            
+            <View style={styles.quickActions}>
+              <Pressable 
+                style={styles.actionButton}
+                onPress={() => navigateToBuyServices('airtime')}>
+                <LinearGradient
+                  colors={['#1a237e', '#0d47a1']}
+                  style={styles.actionIconContainer}>
+                  <Ionicons name="phone-portrait" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.actionText}>Airtime</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.actionButton}
+                onPress={() => navigateToBuyServices('data')}>
+                <LinearGradient
+                  colors={['#1a237e', '#0d47a1']}
+                  style={styles.actionIconContainer}>
+                  <Ionicons name="wifi" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.actionText}>Data</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.actionButton}
+                onPress={navigateToPayBills}>
+                <LinearGradient
+                  colors={['#1a237e', '#0d47a1']}
+                  style={styles.actionIconContainer}>
+                  <Ionicons name="receipt" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.actionText}>Pay Bills</Text>
+              </Pressable>
+
+              <Pressable style={styles.actionButton}>
+                <LinearGradient
+                  colors={['#1a237e', '#0d47a1']}
+                  style={styles.actionIconContainer}>
+                  <Ionicons name="swap-horizontal" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.actionText}>Transfer</Text>
+              </Pressable>
+            </View>
+
+            {/* Recent Transactions Section */}
+            <View style={styles.transactionsHeader}>
+              <Text style={styles.transactionsTitle}>Recent Transactions</Text>
+              <Pressable>
+                <Text style={styles.viewAllButton}>View All</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.transactionsList}>
+              <View style={styles.transactionItem}>
+                <View style={styles.transactionLeft}>
+                  <View style={styles.transactionIconContainer}>
+                    <Ionicons name="wifi" size={20} color="#1a237e" />
+                  </View>
+                  <View>
+                    <Text style={styles.transactionTitle}>1GB Data Bundle</Text>
+                    <Text style={styles.transactionSubtitle}>MTN Eswatini</Text>
+                  </View>
+                </View>
+                <Text style={styles.transactionAmount}>-E99.00</Text>
+              </View>
+
+              <View style={styles.transactionItem}>
+                <View style={styles.transactionLeft}>
+                  <View style={styles.transactionIconContainer}>
+                    <Ionicons name="phone-portrait" size={20} color="#1a237e" />
+                  </View>
+                  <View>
+                    <Text style={styles.transactionTitle}>Airtime Top Up</Text>
+                    <Text style={styles.transactionSubtitle}>MTN Eswatini</Text>
+                  </View>
+                </View>
+                <Text style={styles.transactionAmount}>-E50.00</Text>
+              </View>
+
+              <View style={styles.transactionItem}>
+                <View style={styles.transactionLeft}>
+                  <View style={styles.transactionIconContainer}>
+                    <Ionicons name="call" size={20} color="#1a237e" />
+                  </View>
+                  <View>
+                    <Text style={styles.transactionTitle}>Voice Bundle</Text>
+                    <Text style={styles.transactionSubtitle}>MTN Eswatini</Text>
+                  </View>
+                </View>
+                <Text style={styles.transactionAmount}>-E75.00</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </ScrollView>
+
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}>
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowMenu(false)}>
+          <Pressable style={styles.menuContainer}>
+            <LinearGradient
+              colors={['#fff', '#f8f9fa']}
+              style={styles.menu}>
+              <Pressable style={styles.menuItem} onPress={() => {
+                setShowMenu(false);
+                router.push('/(tabs)/profile');
+              }}>
+                <Ionicons name="person-outline" size={24} color="#1a237e" />
+                <Text style={styles.menuItemText}>Profile</Text>
+              </Pressable>
+              
+              <Pressable style={styles.menuItem} onPress={() => {
+                setShowMenu(false);
+                // TODO: Navigate to settings
+              }}>
+                <Ionicons name="settings-outline" size={24} color="#1a237e" />
+                <Text style={styles.menuItemText}>Settings</Text>
+              </Pressable>
+              
+              <Pressable style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={24} color="#dc3545" />
+                <Text style={[styles.menuItemText, styles.logoutText]}>Logout</Text>
+              </Pressable>
+            </LinearGradient>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  backgroundGradient: {
+    height: '100%',
+  },
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  header: {
+    paddingTop: 36,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  subGreeting: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  profileButton: {
+    marginTop: 4,
+  },
+  profileButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-start',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: 80,
+    right: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menu: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    minWidth: 200,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  menuItemText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#1a237e',
+    fontWeight: '600',
+  },
+  logoutItem: {
+    borderBottomWidth: 0,
+  },
+  logoutText: {
+    color: '#dc3545',
+  },
+  cardContainer: {
+    paddingHorizontal: 24,
+    marginTop: 16,
+  },
+  card: {
+    padding: 24,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  balanceLabel: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  balanceAmount: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 24,
+  },
+  topUpButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  topUpButtonText: {
+    color: '#1a237e',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingTop: 320,
+  },
+  airtimeSection: {
+    flex: 1,
+  },
+  airtimeContainer: {
+    flex: 1,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    minHeight: 600,
+  },
+  buyButton: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  buyButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  buyButtonIcon: {
+    marginRight: 12,
+  },
+  buyButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a237e',
+  },
+  buyButtonArrow: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  quickActionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a237e',
+    marginBottom: 16,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  actionButton: {
+    alignItems: 'center',
+    width: '23%',
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#1a237e',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  transactionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  transactionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a237e',
+  },
+  viewAllButton: {
+    color: '#1a237e',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  transactionsList: {
+    gap: 16,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  transactionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(26, 35, 126, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a237e',
+    marginBottom: 2,
+  },
+  transactionSubtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#dc3545',
+  },
+});
