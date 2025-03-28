@@ -15,13 +15,21 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "withoutCredentials": true,
+        "gradleProperties": {
+          "android.suppressKotlinVersionCompatibilityCheck": "true"
+        }
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "gradleProperties": {
+          "android.suppressKotlinVersionCompatibilityCheck": "true"
+        }
       }
     }
   },
