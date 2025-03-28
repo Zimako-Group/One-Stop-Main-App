@@ -1,0 +1,3 @@
+@echo off
+echo Starting One-Stop App in Expo Go...
+npx expo start --tunnel
