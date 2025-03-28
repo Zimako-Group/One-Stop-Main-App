@@ -17,19 +17,13 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
-        "withoutCredentials": true,
-        "gradleProperties": {
-          "android.suppressKotlinVersionCompatibilityCheck": "true"
-        }
+        "withoutCredentials": true
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle",
-        "gradleProperties": {
-          "android.suppressKotlinVersionCompatibilityCheck": "true"
-        }
+        "buildType": "app-bundle"
       }
     }
   },
