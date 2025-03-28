@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
+    "name": "One-Stop App",
     "slug": "bolt-expo-nativewind",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,6 +29,15 @@
       "eas": {
         "projectId": "e68cc467-06c1-4d5b-a5d3-481bff91647a"
       }
+    },
+    "android": {
+      "package": "com.spacecowboy95.boltexponativewind",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#1a237e"
+      },
+      "permissions": ["INTERNET"]
     }
   }
 }
