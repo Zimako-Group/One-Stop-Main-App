@@ -4,9 +4,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { router } from 'expo-router';
+import { useWallet } from '../../src/contexts/WalletContext';
 
 export default function Home() {
   const [showMenu, setShowMenu] = useState(false);
+  const { balance } = useWallet();
 
   const handleLogout = () => {
     setShowMenu(false);
@@ -23,6 +25,13 @@ export default function Home() {
 
   const navigateToPayBills = () => {
     router.push('/(tabs)/pay-bills');
+  };
+
+  const navigateToTransfers = (transferType: string | null = null) => {
+    router.push({
+      pathname: '/(tabs)/transfers',
+      params: { transferType }
+    });
   };
 
   return (
@@ -69,8 +78,10 @@ export default function Home() {
               <Text style={styles.balanceLabel}>Available Balance</Text>
               <Ionicons name="wallet-outline" size={24} color="rgba(255,255,255,0.9)" />
             </View>
-            <Text style={styles.balanceAmount}>E150.00</Text>
-            <Pressable style={styles.topUpButton}>
+            <Text style={styles.balanceAmount}>E{balance.toFixed(2)}</Text>
+            <Pressable 
+              style={styles.topUpButton}
+              onPress={() => router.push('/top-up')}>
               <Text style={styles.topUpButtonText}>Top Up Balance</Text>
             </Pressable>
           </LinearGradient>
@@ -141,7 +152,9 @@ export default function Home() {
                 <Text style={styles.actionText}>Pay Bills</Text>
               </Pressable>
 
-              <Pressable style={styles.actionButton}>
+              <Pressable 
+                style={styles.actionButton}
+                onPress={() => navigateToTransfers()}>
                 <LinearGradient
                   colors={['#1a237e', '#0d47a1']}
                   style={styles.actionIconContainer}>
@@ -154,7 +167,7 @@ export default function Home() {
             {/* Recent Transactions Section */}
             <View style={styles.transactionsHeader}>
               <Text style={styles.transactionsTitle}>Recent Transactions</Text>
-              <Pressable>
+              <Pressable onPress={() => router.push('/transaction-history')}>
                 <Text style={styles.viewAllButton}>View All</Text>
               </Pressable>
             </View>
@@ -226,7 +239,7 @@ export default function Home() {
               
               <Pressable style={styles.menuItem} onPress={() => {
                 setShowMenu(false);
-                // TODO: Navigate to settings
+                router.push('/settings');
               }}>
                 <Ionicons name="settings-outline" size={24} color="#1a237e" />
                 <Text style={styles.menuItemText}>Settings</Text>

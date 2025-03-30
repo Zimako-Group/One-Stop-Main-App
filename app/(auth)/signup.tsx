@@ -56,9 +56,19 @@ export default function SignUp() {
         </View>
 
         <View style={styles.inputContainer}>
+          <Ionicons name="call-outline" size={20} color="#fff" style={styles.inputIcon} />
+          <TextInput
+            placeholder="Phone Number"
+            placeholderTextColor="rgba(255,255,255,0.7)"
+            style={styles.input}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={20} color="#fff" style={styles.inputIcon} />
           <TextInput
-            placeholder="Email"
+            placeholder="Email (Optional)"
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             keyboardType="email-address"
@@ -110,9 +120,9 @@ export default function SignUp() {
         entering={FadeInDown.delay(600).duration(1000)}
         style={styles.footer}>
         <Text style={styles.footerText}>Already have an account? </Text>
-        <Link href="/(auth)/" asChild>
+        <Link href="/(auth)" asChild>
           <Pressable>
-            <Text style={styles.footerLink}>Sign In</Text>
+            <Text style={styles.footerLink}>Login</Text>
           </Pressable>
         </Link>
       </Animated.View>

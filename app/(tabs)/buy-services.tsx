@@ -204,7 +204,7 @@ export default function BuyServices() {
             ]}
             onPress={() => handleNetworkSelect('MTN')}>
             <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1621768216002-5ac171876625?w=400' }}
+              source={require('../../assets/images/mtn-logo.jpg')}
               style={styles.networkLogo}
               resizeMode="contain"
             />
@@ -220,7 +220,7 @@ export default function BuyServices() {
             ]}
             onPress={() => handleNetworkSelect('ESM')}>
             <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1621768216002-5ac171876625?w=400' }}
+              source={require('../../assets/images/eswatini-logo.jpg')}
               style={styles.networkLogo}
               resizeMode="contain"
             />
@@ -285,7 +285,7 @@ export default function BuyServices() {
         <Animated.View 
           entering={FadeInDown.delay(1000).duration(1000)}
           style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Package</Text>
+          <Text style={styles.sectionTitle}>Select Bundle</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -308,24 +308,26 @@ export default function BuyServices() {
             ))}
           </ScrollView>
 
-          {/* Custom Amount */}
-          <View style={styles.customAmountContainer}>
-            <Text style={styles.customAmountLabel}>Or Enter Custom Amount</Text>
-            <View style={styles.customAmountInput}>
-              <Text style={styles.currency}>E</Text>
-              <TextInput
-                style={styles.amountInput}
-                value={customAmount}
-                onChangeText={(text) => {
-                  setCustomAmount(text);
-                  setSelectedPackage(null);
-                }}
-                keyboardType="numeric"
-                placeholder="0.00"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-              />
+          {/* Custom Amount - Only show for Airtime */}
+          {serviceType === 'airtime' && (
+            <View style={styles.customAmountContainer}>
+              <Text style={styles.customAmountLabel}>Or Enter Custom Amount</Text>
+              <View style={styles.customAmountInput}>
+                <Text style={styles.currency}>E</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={customAmount}
+                  onChangeText={(text) => {
+                    setCustomAmount(text);
+                    setSelectedPackage(null);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0.00"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                />
+              </View>
             </View>
-          </View>
+          )}
         </Animated.View>
       )}
 

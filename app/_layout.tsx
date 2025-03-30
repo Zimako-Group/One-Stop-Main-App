@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { WalletProvider } from '../src/contexts/WalletContext';
 
 declare global {
   interface Window {
@@ -16,15 +17,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-        }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-      <StatusBar style="light" />
+      <WalletProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'fade',
+          }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="top-up" />
+        </Stack>
+        <StatusBar style="light" />
+      </WalletProvider>
     </GestureHandlerRootView>
   );
 }

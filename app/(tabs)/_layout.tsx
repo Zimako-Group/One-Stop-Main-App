@@ -1,17 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { AnimatedTabBar } from '../../src/components/AnimatedTabBar';
 
 export default function TabLayout() {
   return (
     <Tabs
+      tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#1e1e1e',
-          borderTopWidth: 0,
-        },
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#666',
       }}>
       <Tabs.Screen
         name="index"
@@ -37,6 +33,15 @@ export default function TabLayout() {
           title: 'Pay Bills',
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="receipt" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="transfers"
+        options={{
+          title: 'Transfers',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="swap-horizontal" size={size} color={color} />
           ),
         }}
       />

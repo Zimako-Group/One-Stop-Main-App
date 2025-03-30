@@ -295,13 +295,13 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#1a237e',
   },
   contentContainer: {
     paddingBottom: 40,
   },
   gradient: {
-    height: 260,
+    position: 'absolute',
   },
   header: {
     flexDirection: 'row',
