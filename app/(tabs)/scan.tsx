@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { Camera, CameraView, BarcodeScanningResult } from 'expo-camera';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 export default function ScanScreen() {
@@ -16,12 +16,12 @@ export default function ScanScreen() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === 'granted');
     })();
   }, []);
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ type, data }: BarcodeScanningResult) => {
     setScanned(true);
     setScanResult(data);
     
@@ -89,7 +89,7 @@ export default function ScanScreen() {
         <Text style={styles.permissionText}>No access to camera</Text>
         <Pressable 
           style={styles.permissionButton}
-          onPress={() => BarCodeScanner.requestPermissionsAsync()}>
+          onPress={() => Camera.requestCameraPermissionsAsync()}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </Pressable>
       </View>
@@ -116,9 +116,13 @@ export default function ScanScreen() {
           entering={FadeInDown.delay(300).duration(1000)}
           style={styles.scannerContainer}>
           <View style={styles.scannerFrame}>
-            <BarCodeScanner
-              onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+            <CameraView
+              facing="back"
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
               style={StyleSheet.absoluteFillObject}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr']
+              }}
             />
             <View style={styles.scannerOverlay}>
               <View style={styles.scannerTargetRow}>
@@ -199,7 +203,7 @@ export default function ScanScreen() {
                 onPress={handlePayment}
                 disabled={loading}>
                 {loading ? (
-                  <ActivityIndicator color="#ffffff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.payButtonText}>Pay Now</Text>
                 )}
@@ -215,15 +219,18 @@ export default function ScanScreen() {
           entering={FadeInDown.delay(300).duration(1000)}
           style={styles.successCard}>
           <LinearGradient
-            colors={['rgba(76,175,80,0.2)', 'rgba(76,175,80,0.1)']}
+            colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
             style={styles.successCardGradient}>
             <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#4caf50" />
+              <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
             </View>
             <Text style={styles.successTitle}>Payment Successful!</Text>
-            <Text style={styles.successMessage}>
-              Your payment of E{amount} to {merchantName} has been processed successfully.
-            </Text>
+            {amount && (
+              <Text style={styles.successAmount}>E{amount}</Text>
+            )}
+            {merchantName && (
+              <Text style={styles.successMerchant}>Paid to {merchantName}</Text>
+            )}
           </LinearGradient>
         </Animated.View>
       )}
@@ -239,33 +246,12 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 60,
     paddingBottom: 20,
-    paddingHorizontal: 20,
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  permissionText: {
-    fontSize: 18,
-    color: '#ffffff',
-    textAlign: 'center',
-    marginTop: 100,
-  },
-  permissionButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 20,
-    alignSelf: 'center',
-  },
-  permissionButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
   },
   scannerContainer: {
     flex: 1,
@@ -289,55 +275,51 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.5)',
     borderRadius: 16,
-    justifyContent: 'space-between',
+    padding: 12,
   },
   scannerTargetRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: 24,
   },
   scannerTargetCorner: {
-    width: 20,
-    height: 20,
-    borderColor: '#ffffff',
-    borderWidth: 3,
+    width: 24,
+    height: 24,
+    borderColor: '#fff',
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
   },
   scanInstructions: {
-    color: '#ffffff',
+    color: '#fff',
     fontSize: 16,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 24,
     marginBottom: 40,
   },
   confirmationCard: {
-    margin: 20,
+    flex: 1,
+    marginHorizontal: 20,
+    marginVertical: 40,
     borderRadius: 16,
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   confirmationCardGradient: {
-    padding: 20,
-    borderRadius: 16,
+    flex: 1,
+    padding: 24,
   },
   confirmationTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   confirmationDetails: {
-    marginBottom: 20,
+    marginBottom: 32,
   },
   confirmationRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 16,
   },
   confirmationLabel: {
     fontSize: 16,
@@ -345,66 +327,87 @@ const styles = StyleSheet.create({
   },
   confirmationValue: {
     fontSize: 16,
-    color: '#ffffff',
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#fff',
   },
   confirmationActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
   },
   confirmationButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 5,
   },
   cancelButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  payButton: {
-    backgroundColor: '#4caf50',
+    marginRight: 12,
   },
   cancelButtonText: {
-    color: '#ffffff',
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+  },
+  payButton: {
+    backgroundColor: '#4CAF50',
+    marginLeft: 12,
   },
   payButtonText: {
-    color: '#ffffff',
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   successCard: {
-    margin: 20,
+    flex: 1,
+    marginHorizontal: 20,
+    marginVertical: 40,
     borderRadius: 16,
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   successCardGradient: {
-    padding: 20,
-    borderRadius: 16,
+    flex: 1,
+    padding: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   successIconContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   successTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 10,
+    color: '#fff',
+    marginBottom: 16,
   },
-  successMessage: {
+  successAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  successMerchant: {
     fontSize: 16,
-    color: '#ffffff',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  permissionText: {
+    color: '#fff',
+    fontSize: 18,
     textAlign: 'center',
+    marginTop: 100,
+    marginBottom: 20,
+    paddingHorizontal: 40,
+  },
+  permissionButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  permissionButtonText: {
+    color: '#1a237e',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
