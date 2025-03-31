@@ -486,7 +486,7 @@ export default function BuyServices() {
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.noFrillsBundlesContainer}>
+                contentContainerStyle={[styles.noFrillsBundlesContainer, { minHeight: 350 }]}>
                 {/* First No Frills Bundle */}
                 <Pressable
                   style={[
@@ -699,12 +699,13 @@ export default function BuyServices() {
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.packagesContainer}>
+            contentContainerStyle={[styles.packagesContainer, { minHeight: 200 }]}>
             {getPackages().map((pkg) => (
               <Pressable
                 key={pkg.id}
                 style={[
                   styles.packageCard,
+                  { height: 180 },
                   selectedPackage?.id === pkg.id && styles.selectedPackage,
                 ]}
                 onPress={() => {
@@ -744,6 +745,7 @@ export default function BuyServices() {
                     key={pkg.id}
                     style={[
                       styles.packageCard,
+                      { height: 180 },
                       selectedPackage?.id === pkg.id && styles.selectedPackage,
                     ]}
                     onPress={() => {
@@ -777,12 +779,13 @@ export default function BuyServices() {
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.packagesContainer}>
+                contentContainerStyle={[styles.packagesContainer, { minHeight: 200 }]}>
                 {getYouTubeBundles().map((pkg) => (
                   <Pressable
                     key={pkg.id}
                     style={[
                       styles.packageCard,
+                      { height: 180 },
                       selectedPackage?.id === pkg.id && styles.selectedPackage,
                     ]}
                     onPress={() => {
@@ -1225,6 +1228,7 @@ const styles = StyleSheet.create({
   },
   packageCard: {
     width: 160,
+    height: 180,
     marginRight: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -1299,12 +1303,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingTop: 8,
     gap: 12,
+    minHeight: 350,
   },
   noFrillsTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   noFrillsPrice: {
     fontSize: 32,
