@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 // Define top-up method types
-type TopUpMethod = 'mtn_momo' | 'bank_transfer' | null;
+type TopUpMethod = 'mtn_momo' | 'emali' | 'bank_transfer' | null;
 
 // Card types
 type CardType = 'visa' | 'mastercard' | 'amex' | 'discover' | 'other';
@@ -51,7 +51,7 @@ export default function TopUp() {
         return;
       }
 
-      if (topUpMethod === 'mtn_momo' && (!phoneNumber || phoneNumber.length < 8)) {
+      if ((topUpMethod === 'mtn_momo' || topUpMethod === 'emali') && (!phoneNumber || phoneNumber.length < 8)) {
         Alert.alert('Invalid Phone Number', 'Please enter a valid phone number');
         return;
       }
@@ -63,10 +63,13 @@ export default function TopUp() {
       // Process payment
       setLoading(true);
       
-      // Simulate API call to MTN MoMo
+      // Process payment based on selected method
       if (topUpMethod === 'mtn_momo') {
         // Placeholder for MTN MoMo API integration
         initiateTopUpWithMoMo();
+      } else if (topUpMethod === 'emali') {
+        // Placeholder for e-Mali API integration
+        initiateTopUpWithEMali();
       } else if (topUpMethod === 'bank_transfer') {
         // Placeholder for bank transfer processing
         processBankTransfer();
@@ -108,6 +111,57 @@ export default function TopUp() {
      *   },
      *   payerMessage: 'Top up One-Stop wallet',
      *   payeeNote: 'Payment for wallet top up'
+     * };
+     * 
+     * fetch(apiUrl, {
+     *   method: 'POST',
+     *   headers: headers,
+     *   body: JSON.stringify(requestBody)
+     * })
+     * .then(response => {
+     *   // Handle response
+     * })
+     * .catch(error => {
+     *   // Handle error
+     * });
+     */
+    
+    // For now, simulate a successful API call
+    setTimeout(() => {
+      setLoading(false);
+      setStep(4);
+      
+      // Update wallet balance in a real implementation
+      // This would typically be done after confirming the payment was successful
+    }, 2000);
+  };
+
+  // Placeholder for e-Mali API integration
+  const initiateTopUpWithEMali = () => {
+    // TODO: Integrate with e-Mali API
+    
+    /**
+     * e-Mali API Integration would typically involve:
+     * 1. Creating a payment request
+     * 2. Sending the request to e-Mali API
+     * 3. Handling the callback/response
+     * 
+     * Example API call structure:
+     * 
+     * const apiUrl = 'https://api.emali.co.sz/v1/payments';
+     * const headers = {
+     *   'Authorization': `Bearer ${accessToken}`,
+     *   'X-Reference-Id': reference,
+     *   'Content-Type': 'application/json',
+     *   'Api-Key': process.env.EMALI_API_KEY
+     * };
+     * 
+     * const requestBody = {
+     *   amount: amount,
+     *   currency: 'SZL',
+     *   reference: reference,
+     *   phoneNumber: phoneNumber,
+     *   description: 'Top up One-Stop wallet'
      * };
      * 
      * fetch(apiUrl, {
@@ -323,6 +377,20 @@ export default function TopUp() {
 
             <Pressable 
               style={styles.methodCard}
+              onPress={() => handleSelectMethod('emali')}>
+              <LinearGradient
+                colors={['rgba(220,53,69,0.2)', 'rgba(220,53,69,0.1)']}
+                style={styles.methodCardGradient}>
+                <View style={[styles.methodIconContainer, { backgroundColor: '#dc3545' }]}>
+                  <Ionicons name="wallet" size={24} color="#fff" />
+                </View>
+                <Text style={styles.methodTitle}>e-Mali</Text>
+                <Text style={styles.methodDescription}>Top up using e-Mali wallet</Text>
+              </LinearGradient>
+            </Pressable>
+
+            <Pressable 
+              style={styles.methodCard}
               onPress={() => handleSelectMethod('bank_transfer')}>
               <LinearGradient
                 colors={['rgba(33,150,243,0.2)', 'rgba(33,150,243,0.1)']}
@@ -362,7 +430,7 @@ export default function TopUp() {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
           <Text style={styles.headerTitle}>
-            {topUpMethod === 'mtn_momo' ? 'MTN MoMo Top Up' : 'Bank Transfer'}
+            {topUpMethod === 'mtn_momo' ? 'MTN MoMo Top Up' : topUpMethod === 'emali' ? 'e-Mali Top Up' : 'Bank Transfer'}
           </Text>
         </Animated.View>
 
@@ -387,14 +455,14 @@ export default function TopUp() {
               />
             </View>
             
-            {topUpMethod === 'mtn_momo' ? (
+            {(topUpMethod === 'mtn_momo' || topUpMethod === 'emali') ? (
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Phone Number</Text>
                 <TextInput
                   style={styles.formInput}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
-                  placeholder="Enter MTN number"
+                  placeholder={topUpMethod === 'mtn_momo' ? "Enter MTN number" : "Enter e-Mali number"}
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   keyboardType="phone-pad"
                 />
@@ -565,7 +633,12 @@ export default function TopUp() {
             <View style={styles.confirmationItem}>
               <Text style={styles.confirmationLabel}>Method</Text>
               <Text style={styles.confirmationValue}>
-                {topUpMethod === 'mtn_momo' ? 'MTN MoMo' : 'Bank Card'}
+                {topUpMethod === 'mtn_momo' 
+                  ? 'MTN MoMo' 
+                  : topUpMethod === 'emali'
+                    ? 'e-Mali'
+                    : 'Bank Card'
+                }
               </Text>
             </View>
             
@@ -574,7 +647,7 @@ export default function TopUp() {
               <Text style={styles.confirmationValue}>E{amount}</Text>
             </View>
             
-            {topUpMethod === 'mtn_momo' ? (
+            {(topUpMethod === 'mtn_momo' || topUpMethod === 'emali') ? (
               <View style={styles.confirmationItem}>
                 <Text style={styles.confirmationLabel}>Phone Number</Text>
                 <Text style={styles.confirmationValue}>{phoneNumber}</Text>
@@ -645,7 +718,13 @@ export default function TopUp() {
           
           <Text style={styles.successTitle}>Top-Up Successful!</Text>
           <Text style={styles.successMessage}>
-            Your wallet has been topped up with E{amount} successfully.
+            Your wallet has been topped up with E{amount} via {
+              topUpMethod === 'mtn_momo' 
+                ? 'MTN MoMo' 
+                : topUpMethod === 'emali'
+                  ? 'e-Mali'
+                  : 'Bank Transfer'
+            }.
           </Text>
           
           <View style={styles.receiptContainer}>
@@ -662,7 +741,12 @@ export default function TopUp() {
             <View style={styles.receiptItem}>
               <Text style={styles.receiptLabel}>Method</Text>
               <Text style={styles.receiptValue}>
-                {topUpMethod === 'mtn_momo' ? 'MTN MoMo' : 'Bank Transfer'}
+                {topUpMethod === 'mtn_momo' 
+                  ? 'MTN MoMo' 
+                  : topUpMethod === 'emali'
+                    ? 'e-Mali'
+                    : 'Bank Transfer'
+                }
               </Text>
             </View>
             

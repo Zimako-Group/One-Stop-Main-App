@@ -8,40 +8,56 @@ export default function TabLayout() {
       tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 5,
+        },
+        tabBarIconStyle: {
+          width: 22,
+          height: 22,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginTop: 2,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="buy-services"
         options={{
-          title: 'Services',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="cart" size={size} color={color} />
+          title: 'Store',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="cart" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: 'Scan',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="qr-code" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="pay-bills"
         options={{
-          title: 'Pay Bills',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="receipt" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="transfers"
-        options={{
-          title: 'Transfers',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="swap-horizontal" size={size} color={color} />
+          title: 'Services',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="apps" size={22} color={color} />
           ),
         }}
       />
@@ -49,8 +65,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-circle-outline" size={22} color={color} />
           ),
         }}
       />
