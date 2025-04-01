@@ -9,6 +9,7 @@ import { useWallet } from '../../src/contexts/WalletContext';
 export default function Home() {
   const [showMenu, setShowMenu] = useState(false);
   const { balance } = useWallet();
+  const [showBalance, setShowBalance] = useState(false);
 
   const handleLogout = () => {
     setShowMenu(false);
@@ -18,18 +19,18 @@ export default function Home() {
 
   const navigateToBuyServices = (serviceType: 'airtime' | 'data' | null = null) => {
     router.push({
-      pathname: '/(tabs)/buy-services',
+      pathname: '/buy-services',
       params: { serviceType }
     });
   };
 
   const navigateToPayBills = () => {
-    router.push('/(tabs)/pay-bills');
+    router.push('/pay-bills');
   };
 
   const navigateToTransfers = (transferType: string | null = null) => {
     router.push({
-      pathname: '/(tabs)/transfers',
+      pathname: '/transfers',
       params: { transferType }
     });
   };
@@ -76,14 +77,80 @@ export default function Home() {
             style={styles.card}>
             <View style={styles.balanceHeader}>
               <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Ionicons name="wallet-outline" size={24} color="rgba(255,255,255,0.9)" />
+              <View style={styles.balanceIcons}>
+                <Pressable 
+                  onPress={() => setShowBalance(!showBalance)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons 
+                    name={showBalance ? "eye-outline" : "eye-off-outline"} 
+                    size={20} 
+                    color="rgba(255,255,255,0.9)" 
+                  />
+                </Pressable>
+                <Ionicons name="wallet-outline" size={20} color="rgba(255,255,255,0.9)" />
+              </View>
             </View>
-            <Text style={styles.balanceAmount}>E{balance.toFixed(2)}</Text>
-            <Pressable 
-              style={styles.topUpButton}
-              onPress={() => router.push('/top-up')}>
-              <Text style={styles.topUpButtonText}>Top Up Balance</Text>
-            </Pressable>
+            <View style={styles.balanceRow}>
+              {showBalance ? (
+                <Text style={styles.balanceAmount}>E{balance.toFixed(2)}</Text>
+              ) : (
+                <Text style={styles.balanceAmount}>E ••••••</Text>
+              )}
+              <Pressable 
+                style={styles.topUpButton}
+                onPress={() => router.push('/top-up')}>
+                <LinearGradient
+                  colors={['#4CAF50', '#2E7D32']}
+                  style={styles.topUpGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <View style={styles.topUpContent}>
+                    <Ionicons name="add-circle-outline" size={14} color="#fff" />
+                    <Text style={styles.topUpButtonText}>Top Up</Text>
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Quick Actions Card */}
+        <Animated.View 
+          entering={FadeInDown.delay(500).duration(1000)}
+          style={styles.cardContainer}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+            style={styles.quickActionsCard}>
+            <View style={styles.quickActionsContainer}>
+              <Pressable 
+                style={styles.quickActionButton}
+                onPress={() => navigateToTransfers('send')}>
+                <View style={styles.quickActionIconContainer}>
+                  <Ionicons name="paper-plane" size={20} color="#fff" />
+                </View>
+                <Text style={styles.quickActionText}>Send Money</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.quickActionButton}
+                onPress={() => router.push('/scan-to-pay')}>
+                <View style={styles.quickActionIconContainer}>
+                  <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                </View>
+                <Text style={styles.quickActionText}>Scan to Pay</Text>
+              </Pressable>
+
+              <Pressable 
+                style={styles.quickActionButton}
+                onPress={() => navigateToTransfers('withdraw')}>
+                <View style={styles.quickActionIconContainer}>
+                  <Ionicons name="cash-outline" size={20} color="#fff" />
+                </View>
+                <Text style={styles.quickActionText}>Withdraw</Text>
+              </Pressable>
+            </View>
           </LinearGradient>
         </Animated.View>
       </View>
@@ -231,7 +298,7 @@ export default function Home() {
               style={styles.menu}>
               <Pressable style={styles.menuItem} onPress={() => {
                 setShowMenu(false);
-                router.push('/(tabs)/profile');
+                router.push('/profile');
               }}>
                 <Ionicons name="person-outline" size={24} color="#1a237e" />
                 <Text style={styles.menuItemText}>Profile</Text>
@@ -357,8 +424,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   card: {
-    padding: 24,
-    borderRadius: 24,
+    padding: 16,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
@@ -367,28 +434,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   balanceLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
   },
+  balanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   balanceAmount: {
-    fontSize: 40,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 24,
+    marginRight: 16,
+  },
+  balanceIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eyeIcon: {
+    marginRight: 8,
   },
   topUpButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  topUpGradient: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  topUpContent: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   topUpButtonText: {
-    color: '#1a237e',
-    fontSize: 16,
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,
@@ -544,5 +630,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#dc3545',
+  },
+  quickActionsCard: {
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  quickActionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(26, 35, 126, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });

@@ -17,19 +17,19 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 // Icons for each tab
 const tabIcons: Record<string, string> = {
   'index': 'home',
-  'buy-services': 'cart',
-  'pay-bills': 'receipt',
-  'transfers': 'swap-horizontal',
-  'profile': 'person',
+  'shop': 'cart',
+  'services': 'apps',
+  'products': 'cube-outline',
+  'rewards': 'gift-outline',
 };
 
 // Tab titles
 const tabTitles: Record<string, string> = {
   'index': 'Home',
-  'buy-services': 'Services',
-  'pay-bills': 'Pay Bills',
-  'transfers': 'Transfers',
-  'profile': 'Profile',
+  'shop': 'Shop',
+  'services': 'Services',
+  'products': 'Products',
+  'rewards': 'Rewards',
 };
 
 export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {

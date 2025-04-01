@@ -35,25 +35,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="buy-services"
+        name="shop"
         options={{
-          title: 'Store',
+          title: 'Shop',
           tabBarIcon: ({ color }) => (
             <Ionicons name="cart" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="scan"
-        options={{
-          title: 'Scan',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="qr-code" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="pay-bills"
+        name="services"
         options={{
           title: 'Services',
           tabBarIcon: ({ color }) => (
@@ -62,11 +53,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="products"
         options={{
-          title: 'Profile',
+          title: 'Products',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="person-circle-outline" size={22} color={color} />
+            <Ionicons name="cube-outline" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="rewards"
+        options={{
+          title: 'Rewards',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="gift-outline" size={22} color={color} />
           ),
         }}
       />
