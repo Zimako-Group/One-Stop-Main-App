@@ -168,9 +168,13 @@ export default function Shop() {
           entering={FadeInDown.delay(600).duration(1000)}
           style={styles.popularSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Popular Items</Text>
-            <Pressable>
+            <View style={styles.sectionTitleContainer}>
+              <Ionicons name="star" size={20} color="#FFD700" style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>Popular Items</Text>
+            </View>
+            <Pressable style={styles.viewAllButton}>
               <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={16} color="#4CAF50" />
             </Pressable>
           </View>
           
@@ -184,15 +188,21 @@ export default function Shop() {
               style={styles.popularItem}
               onPress={() => navigateToBuyServices('airtime')}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+                colors={['#FF9800', '#F57C00']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.popularItemGradient}>
-                <View style={[styles.popularItemIcon, { backgroundColor: 'rgba(255, 152, 0, 0.2)' }]}>
-                  <Ionicons name="phone-portrait" size={24} color="#FF9800" />
-                </View>
-                <Text style={styles.popularItemTitle}>MTN E10</Text>
-                <Text style={styles.popularItemPrice}>E10.00</Text>
-                <View style={styles.popularItemBadge}>
-                  <Text style={styles.popularItemBadgeText}>Popular</Text>
+                <View style={styles.popularItemContent}>
+                  <View style={styles.popularItemIconContainer}>
+                    <Ionicons name="phone-portrait" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.popularItemDetails}>
+                    <Text style={styles.popularItemTitle}>MTN E10</Text>
+                    <Text style={styles.popularItemPrice}>E10.00</Text>
+                  </View>
+                  <View style={styles.popularItemBadge}>
+                    <Text style={styles.popularItemBadgeText}>Popular</Text>
+                  </View>
                 </View>
               </LinearGradient>
             </Pressable>
@@ -202,15 +212,21 @@ export default function Shop() {
               style={styles.popularItem}
               onPress={() => navigateToBuyServices('electricity')}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+                colors={['#4CAF50', '#2E7D32']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.popularItemGradient}>
-                <View style={[styles.popularItemIcon, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
-                  <Ionicons name="flash" size={24} color="#4CAF50" />
-                </View>
-                <Text style={styles.popularItemTitle}>Electricity</Text>
-                <Text style={styles.popularItemPrice}>E50.00</Text>
-                <View style={styles.popularItemBadge}>
-                  <Text style={styles.popularItemBadgeText}>Best Value</Text>
+                <View style={styles.popularItemContent}>
+                  <View style={styles.popularItemIconContainer}>
+                    <Ionicons name="flash" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.popularItemDetails}>
+                    <Text style={styles.popularItemTitle}>Electricity</Text>
+                    <Text style={styles.popularItemPrice}>E50.00</Text>
+                  </View>
+                  <View style={[styles.popularItemBadge, styles.bestValueBadge]}>
+                    <Text style={[styles.popularItemBadgeText, styles.bestValueText]}>Best Value</Text>
+                  </View>
                 </View>
               </LinearGradient>
             </Pressable>
@@ -220,15 +236,45 @@ export default function Shop() {
               style={styles.popularItem}
               onPress={() => navigateToBuyServices('data')}>
               <LinearGradient
-                colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+                colors={['#2196F3', '#1565C0']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.popularItemGradient}>
-                <View style={[styles.popularItemIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
-                  <Ionicons name="wifi" size={24} color="#2196F3" />
+                <View style={styles.popularItemContent}>
+                  <View style={styles.popularItemIconContainer}>
+                    <Ionicons name="wifi" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.popularItemDetails}>
+                    <Text style={styles.popularItemTitle}>1GB Data</Text>
+                    <Text style={styles.popularItemPrice}>E99.00</Text>
+                  </View>
+                  <View style={[styles.popularItemBadge, styles.hotDealBadge]}>
+                    <Text style={[styles.popularItemBadgeText, styles.hotDealText]}>Hot Deal</Text>
+                  </View>
                 </View>
-                <Text style={styles.popularItemTitle}>1GB Data</Text>
-                <Text style={styles.popularItemPrice}>E99.00</Text>
-                <View style={styles.popularItemBadge}>
-                  <Text style={styles.popularItemBadgeText}>Hot Deal</Text>
+              </LinearGradient>
+            </Pressable>
+            
+            {/* Water Bill */}
+            <Pressable 
+              style={styles.popularItem}
+              onPress={() => navigateToBuyServices('water')}>
+              <LinearGradient
+                colors={['#03A9F4', '#0277BD']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.popularItemGradient}>
+                <View style={styles.popularItemContent}>
+                  <View style={styles.popularItemIconContainer}>
+                    <Ionicons name="water" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.popularItemDetails}>
+                    <Text style={styles.popularItemTitle}>Water Bill</Text>
+                    <Text style={styles.popularItemPrice}>E100.00</Text>
+                  </View>
+                  <View style={[styles.popularItemBadge, styles.newBadge]}>
+                    <Text style={[styles.popularItemBadgeText, styles.newText]}>New</Text>
+                  </View>
                 </View>
               </LinearGradient>
             </Pressable>
@@ -347,63 +393,117 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionIcon: {
+    marginRight: 8,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   viewAllText: {
     fontSize: 14,
     color: '#4CAF50',
     fontWeight: '600',
+    marginRight: 4,
   },
   popularItemsContainer: {
     paddingRight: 16,
+    paddingBottom: 8,
   },
   popularItem: {
-    width: 140,
+    width: 180,
     marginRight: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    elevation: 3,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    marginBottom: 8,
   },
   popularItemGradient: {
-    padding: 16,
-    height: 160,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    height: 180,
     borderRadius: 16,
-    alignItems: 'center',
   },
-  popularItemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  popularItemContent: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  popularItemIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  popularItemDetails: {
+    flex: 1,
+    justifyContent: 'center',
   },
   popularItemTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   popularItemPrice: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
     marginBottom: 12,
   },
   popularItemBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 12,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   popularItemBadgeText: {
-    fontSize: 10,
-    color: '#4CAF50',
+    fontSize: 12,
+    color: '#fff',
     fontWeight: 'bold',
+  },
+  bestValueBadge: {
+    backgroundColor: 'rgba(76, 175, 80, 0.25)',
+    borderColor: 'rgba(76, 175, 80, 0.5)',
+  },
+  bestValueText: {
+    color: '#fff',
+  },
+  hotDealBadge: {
+    backgroundColor: 'rgba(255, 87, 34, 0.25)',
+    borderColor: 'rgba(255, 87, 34, 0.5)',
+  },
+  hotDealText: {
+    color: '#fff',
+  },
+  newBadge: {
+    backgroundColor: 'rgba(33, 150, 243, 0.25)',
+    borderColor: 'rgba(33, 150, 243, 0.5)',
+  },
+  newText: {
+    color: '#fff',
   },
 });

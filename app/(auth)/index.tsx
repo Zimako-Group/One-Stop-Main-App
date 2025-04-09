@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Image } from 'react-native';
+import { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -9,12 +9,61 @@ import Animated, {
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function Login() {
-  const handleLogin = useCallback(() => {
-    // TODO: Implement actual login logic
-    router.push('/(tabs)');
-  }, []);
+  const { login, loading: authLoading } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateForm = () => {
+    setError(null);
+    
+    if (!phoneNumber.trim()) {
+      setError('Please enter your phone number');
+      return false;
+    }
+    
+    // Phone number validation - must be at least 8 digits
+    if (phoneNumber.replace(/[^0-9]/g, '').length < 8) {
+      setError('Please enter a valid phone number');
+      return false;
+    }
+    
+    if (!password) {
+      setError('Please enter your password');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleLogin = useCallback(async () => {
+    if (!validateForm()) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Generate email from phone number for Supabase auth
+      const email = `${phoneNumber.replace(/[^0-9]/g, '')}@onestop.com`;
+      
+      const success = await login(email, password);
+      
+      if (success) {
+        router.push('/(tabs)');
+      } else {
+        setError('Invalid phone number or password');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [phoneNumber, password, login]);
 
   return (
     <View style={styles.container}>
@@ -39,20 +88,21 @@ export default function Login() {
           </View>
         </View>
         <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue your journey</Text>
+        <Text style={styles.subtitle}>Sign in with your phone number</Text>
       </Animated.View>
 
       <Animated.View 
         entering={FadeInUp.delay(400).duration(1000)}
         style={styles.form}>
         <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#fff" style={styles.inputIcon} />
+          <Ionicons name="call-outline" size={20} color="#fff" style={styles.inputIcon} />
           <TextInput
-            placeholder="Email"
+            placeholder="Phone Number"
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            keyboardType="phone-pad"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
           />
         </View>
 
@@ -63,6 +113,8 @@ export default function Login() {
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             secureTextEntry
+            value={password}
+            onChangeText={setPassword}
           />
         </View>
 
@@ -70,8 +122,20 @@ export default function Login() {
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </Pressable>
 
-        <Pressable style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Sign In</Text>
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
+
+        <Pressable 
+          style={[styles.button, (loading || authLoading) && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={loading || authLoading}
+        >
+          {(loading || authLoading) ? (
+            <ActivityIndicator color="#1a237e" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>Sign In</Text>
+          )}
         </Pressable>
 
         <View style={styles.orContainer}>
@@ -178,6 +242,14 @@ const styles = StyleSheet.create({
     color: '#1a237e',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  errorText: {
+    color: '#ff4444',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   orContainer: {
     flexDirection: 'row',

@@ -129,14 +129,15 @@ export default function PayBills() {
   };
 
   return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       <LinearGradient
         colors={['#1a237e', '#0d47a1', '#01579b']}
-        style={[StyleSheet.absoluteFill, styles.gradient]}
+        style={StyleSheet.absoluteFill}
       />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}>
 
       {/* Header */}
       <Animated.View 
@@ -253,21 +254,22 @@ export default function PayBills() {
           )}
         </Pressable>
       </Animated.View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+  },
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  gradient: {
-    height: '100%',
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',

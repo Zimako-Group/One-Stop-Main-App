@@ -1,20 +1,158 @@
-import { useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Image } from 'react-native';
+import { useCallback, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, Image, ActivityIndicator, Alert, Modal } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  withDelay,
+  Easing,
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function SignUp() {
-  const handleSignUp = useCallback(() => {
-    // TODO: Implement actual signup logic
-    router.push('/(tabs)');
-  }, []);
+  const { signup } = useAuth();
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateForm = () => {
+    setError(null);
+    
+    if (!fullName.trim()) {
+      setError('Please enter your full name');
+      return false;
+    }
+    
+    if (!phoneNumber.trim()) {
+      setError('Please enter your phone number');
+      return false;
+    }
+    
+    // Phone number validation - must be at least 8 digits
+    if (phoneNumber.replace(/[^0-9]/g, '').length < 8) {
+      setError('Please enter a valid phone number');
+      return false;
+    }
+    
+    // Email is optional, but if provided, validate it
+    if (email.trim() && !email.includes('@')) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+    
+    if (!password) {
+      setError('Please enter a password');
+      return false;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return false;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  
+  // Animation values for the loading animation
+  const rotation = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  
+  // Animated styles
+  const animatedIconStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { rotate: `${rotation.value}deg` },
+        { scale: scale.value }
+      ],
+      opacity: opacity.value
+    };
+  });
+  
+  // Start animations when loading modal is shown
+  useEffect(() => {
+    if (showLoadingModal) {
+      // Rotation animation
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }), 
+        -1 // Infinite repeat
+      );
+      
+      // Pulse animation
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.2, { duration: 500, easing: Easing.out(Easing.ease) }),
+          withTiming(1, { duration: 500, easing: Easing.in(Easing.ease) })
+        ),
+        -1 // Infinite repeat
+      );
+      
+      // Opacity animation
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.7, { duration: 700 }),
+          withTiming(1, { duration: 700 })
+        ),
+        -1 // Infinite repeat
+      );
+    }
+  }, [showLoadingModal]);
+
+  const handleSignUp = useCallback(async () => {
+    if (!validateForm()) return;
+    
+    try {
+      setShowLoadingModal(true);
+      setError(null);
+      
+      // Use the email if provided, otherwise it will be generated from the phone number
+      const emailToUse = email.trim() ? email : undefined;
+      
+      // Simulate a slight delay to show the loading animation (can be removed in production)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const success = await signup(fullName, phoneNumber, emailToUse, password);
+      
+      if (success) {
+        setShowLoadingModal(false);
+        setShowSuccessModal(true);
+        
+        // Automatically redirect to login page after 3 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          router.replace('/(auth)');
+        }, 3000);
+      } else {
+        setShowLoadingModal(false);
+        setError('Failed to create account. Please try again.');
+      }
+    } catch (err) {
+      console.error('Signup error:', err);
+      setShowLoadingModal(false);
+      setError('An error occurred during signup. Please try again.');
+    }
+  }, [fullName, phoneNumber, email, password, confirmPassword, signup]);
 
   return (
     <View style={styles.container}>
@@ -29,6 +167,67 @@ export default function SignUp() {
         style={StyleSheet.absoluteFill}
         blurRadius={60}
       />
+      
+      {/* Loading Modal */}
+      <Modal
+        visible={showLoadingModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalContainer}>
+          <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
+          <LinearGradient
+            colors={['rgba(26, 35, 126, 0.9)', 'rgba(13, 71, 161, 0.9)']}
+            style={styles.loadingModalContent}
+          >
+            <Animated.View style={[styles.loadingIconContainer, animatedIconStyle]}>
+              <Ionicons name="person-add-outline" size={40} color="#fff" />
+            </Animated.View>
+            <Text style={styles.loadingText}>Signing Up...</Text>
+            <Text style={styles.loadingSubText}>Creating your account</Text>
+          </LinearGradient>
+        </View>
+      </Modal>
+      
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalContainer}>
+          <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
+          <LinearGradient
+            colors={['rgba(46, 125, 50, 0.9)', 'rgba(56, 142, 60, 0.9)']}
+            style={styles.successModalContent}
+          >
+            <Animated.View 
+              entering={FadeIn.delay(300).duration(500)}
+              style={styles.successIconContainer}
+            >
+              <Ionicons name="checkmark-circle" size={60} color="#fff" />
+            </Animated.View>
+            <Animated.Text 
+              entering={FadeInDown.delay(500).duration(500)}
+              style={styles.successText}
+            >
+              Success!
+            </Animated.Text>
+            <Animated.Text 
+              entering={FadeInDown.delay(700).duration(500)}
+              style={styles.successSubText}
+            >
+              Your account has been created successfully
+            </Animated.Text>
+            <Animated.Text 
+              entering={FadeInDown.delay(900).duration(500)}
+              style={styles.redirectText}
+            >
+              Redirecting to login...
+            </Animated.Text>
+          </LinearGradient>
+        </View>
+      </Modal>
 
       <Animated.View 
         entering={FadeIn.delay(200).duration(1000)}
@@ -52,6 +251,8 @@ export default function SignUp() {
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             autoCapitalize="words"
+            value={fullName}
+            onChangeText={setFullName}
           />
         </View>
 
@@ -62,6 +263,8 @@ export default function SignUp() {
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             keyboardType="phone-pad"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
           />
         </View>
 
@@ -73,6 +276,8 @@ export default function SignUp() {
             style={styles.input}
             keyboardType="email-address"
             autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
           />
         </View>
 
@@ -83,6 +288,8 @@ export default function SignUp() {
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             secureTextEntry
+            value={password}
+            onChangeText={setPassword}
           />
         </View>
 
@@ -93,11 +300,25 @@ export default function SignUp() {
             placeholderTextColor="rgba(255,255,255,0.7)"
             style={styles.input}
             secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
           />
         </View>
 
-        <Pressable style={styles.button} onPress={handleSignUp}>
-          <Text style={styles.buttonText}>Create Account</Text>
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
+        
+        <Pressable 
+          style={[styles.button, loading && styles.disabledButton]} 
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#1a237e" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
         </Pressable>
 
         <View style={styles.orContainer}>
@@ -129,6 +350,9 @@ export default function SignUp() {
     </View>
   );
 }
+
+// Need to import BlurView for the modals
+const BlurView = require('expo-blur').BlurView;
 
 const styles = StyleSheet.create({
   container: {
@@ -198,6 +422,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  errorText: {
+    color: '#ff4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -240,5 +472,80 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  loadingModalContent: {
+    width: 250,
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  loadingIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  loadingSubText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  successModalContent: {
+    width: 300,
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  successIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  successText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  successSubText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  redirectText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontStyle: 'italic',
   },
 });
