@@ -129,12 +129,12 @@ export default function SignUp() {
       // Use the email if provided, otherwise it will be generated from the phone number
       const emailToUse = email.trim() ? email : undefined;
       
-      // Simulate a slight delay to show the loading animation (can be removed in production)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Remove the simulation delay in production
+      // await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const success = await signup(fullName, phoneNumber, emailToUse, password);
+      const result = await signup(fullName, phoneNumber, emailToUse, password);
       
-      if (success) {
+      if (result.success) {
         setShowLoadingModal(false);
         setShowSuccessModal(true);
         
@@ -145,7 +145,9 @@ export default function SignUp() {
         }, 3000);
       } else {
         setShowLoadingModal(false);
-        setError('Failed to create account. Please try again.');
+        // Display the specific error message from the backend if available
+        setError(result.error || 'Failed to create account. Please try again.');
+        console.error('Signup failed with error:', result.error);
       }
     } catch (err) {
       console.error('Signup error:', err);

@@ -85,12 +85,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (fullName: string, phoneNumber: string, email: string | undefined, password: string): Promise<boolean> => {
+  const signup = async (fullName: string, phoneNumber: string, email: string | undefined, password: string): Promise<{success: boolean, error?: string}> => {
     try {
       setLoading(true);
       
       // If email is not provided, generate one using the phone number
       const userEmail = email || `${phoneNumber.replace(/[^0-9]/g, '')}@onestop.com`;
+      
+      console.log('Attempting signup with:', { fullName, phoneNumber, email: userEmail });
       
       const { data, error } = await supabase.auth.signUp({
         email: userEmail,
@@ -104,43 +106,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        console.error('Signup error:', error.message);
-        return false;
+        console.error('Supabase auth signup error:', error.message);
+        return { success: false, error: `Authentication error: ${error.message}` };
       }
+      
+      console.log('Signup response:', data);
 
-      if (data.user) {
-        // Create a profile record
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              full_name: fullName,
-              phone_number: phoneNumber,
-              email: userEmail,
-              account_number: `ACC${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`
-            }
-          ]);
+      if (!data.user) {
+        console.error('No user data returned from signup');
+        return { success: false, error: 'No user data returned from signup' };
+      }
+      
+      // Generate a unique account number
+      const accountNumber = `ACC${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+      
+      console.log('Creating profile for user:', data.user.id);
+      
+      // First check if a profile with this phone number already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('phone_number')
+        .eq('phone_number', phoneNumber)
+        .single();
+      
+      if (existingProfile) {
+        console.error('Phone number already in use:', phoneNumber);
+        // Clean up the auth user since we won't be using it
+        await supabase.auth.signOut();
+        return { success: false, error: 'This phone number is already registered. Please use a different phone number or try logging in.' };
+      }
+      
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is the error code for 'no rows returned'
+        console.error('Error checking existing profile:', checkError.message);
+      }
+      
+      // Create a profile record
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: data.user.id,
+            full_name: fullName,
+            phone_number: phoneNumber,
+            email: userEmail,
+            account_number: accountNumber
+          }
+        ]);
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError.message);
-          return false;
+      if (profileError) {
+        console.error('Profile creation error:', profileError.message);
+        
+        // Handle duplicate phone number error specifically
+        if (profileError.message.includes('duplicate key value') && 
+            profileError.message.includes('profiles_phone_number_idx')) {
+          // Clean up the auth user since we won't be using it
+          await supabase.auth.signOut();
+          return { success: false, error: 'This phone number is already registered. Please use a different phone number or try logging in.' };
         }
-
-        // Set the user in state
-        setUser({
-          id: data.user.id,
-          email: userEmail,
-          fullName,
-          phoneNumber,
-          accountNumber: `ACC${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`
-        });
-        return true;
+        
+        return { success: false, error: `Profile creation error: ${profileError.message}` };
       }
-      return false;
-    } catch (error) {
-      console.error('Signup error:', error);
-      return false;
+
+      console.log('Profile created successfully');
+      
+      // Set the user in state
+      setUser({
+        id: data.user.id,
+        email: userEmail,
+        fullName,
+        phoneNumber,
+        accountNumber
+      });
+      
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      console.error('Signup error:', errorMessage, error);
+      return { success: false, error: `Exception: ${errorMessage}` };
     } finally {
       setLoading(false);
     }
