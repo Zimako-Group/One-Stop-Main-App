@@ -89,10 +89,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // If email is not provided, generate one using the phone number
-      const userEmail = email || `${phoneNumber.replace(/[^0-9]/g, '')}@onestop.com`;
+      // Normalize the phone number by removing all non-numeric characters
+      const normalizedPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
       
-      console.log('Attempting signup with:', { fullName, phoneNumber, email: userEmail });
+      // Store both the original and normalized phone number
+      const formattedPhoneNumber = phoneNumber; // Keep the original format for display
+      const phoneForAuth = normalizedPhoneNumber; // Use normalized for authentication
+      
+      // If email is not provided, generate one using the normalized phone number
+      const userEmail = email || `${phoneForAuth}@onestop.com`;
+      
+      console.log('Attempting signup with:', { 
+        fullName, 
+        originalPhoneNumber: phoneNumber,
+        normalizedPhoneNumber: phoneForAuth, 
+        email: userEmail 
+      });
       
       const { data, error } = await supabase.auth.signUp({
         email: userEmail,
@@ -100,7 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             full_name: fullName,
-            phone_number: phoneNumber
+            phone_number: formattedPhoneNumber,
+            normalized_phone: phoneForAuth // Store normalized version for auth
           }
         }
       });
@@ -148,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: data.user.id,
             full_name: fullName,
             phone_number: phoneNumber,
+            normalized_phone: normalizedPhoneNumber, // Store normalized version for auth
             email: userEmail,
             account_number: accountNumber
           }
@@ -200,8 +214,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string): Promise<{success: boolean, error?: string}> => {
+    try {
+      setLoading(true);
+      
+      // Validate email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        return { success: false, error: 'Please enter a valid email address' };
+      }
+      
+      // We'll directly attempt to send the reset email
+      // Supabase will handle the case where the email doesn't exist
+      
+      // Send password reset email directly to the provided email
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'onestopapp://reset-password',
+      });
+      
+      if (error) {
+        console.error('Password reset error:', error.message);
+        return { success: false, error: `Failed to send reset instructions: ${error.message}` };
+      }
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      return { success: false, error: `An unexpected error occurred: ${error?.message || 'Unknown error'}` };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, resetPassword, loading }}>
       {children}
     </AuthContext.Provider>
   );

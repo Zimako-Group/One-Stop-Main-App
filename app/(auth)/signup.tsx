@@ -1,153 +1,124 @@
 import { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Image, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Image, ActivityIndicator, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
-  useSharedValue,
+  FadeOut,
   useAnimatedStyle,
+  useSharedValue,
   withRepeat,
   withTiming,
-  withSequence,
-  withDelay,
-  Easing,
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useAuth } from '../../src/contexts/AuthContext';
 
-export default function SignUp() {
-  const { signup } = useAuth();
+export default function Signup() {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { signup } = useAuth();
+
+  // Animation for the loading icon
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    if (showLoadingModal) {
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 2000 }),
+        -1,
+        false
+      );
+    } else {
+      rotation.value = 0;
+    }
+  }, [showLoadingModal]);
+
+  const animatedIconStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }],
+    };
+  });
 
   const validateForm = () => {
-    setError(null);
-    
     if (!fullName.trim()) {
       setError('Please enter your full name');
       return false;
     }
-    
+
     if (!phoneNumber.trim()) {
       setError('Please enter your phone number');
       return false;
     }
-    
-    // Phone number validation - must be at least 8 digits
-    if (phoneNumber.replace(/[^0-9]/g, '').length < 8) {
+
+    // Basic phone number validation
+    const phoneRegex = /^[0-9]{8,12}$/;
+    if (!phoneRegex.test(phoneNumber.replace(/[^0-9]/g, ''))) {
       setError('Please enter a valid phone number');
       return false;
     }
-    
-    // Email is optional, but if provided, validate it
-    if (email.trim() && !email.includes('@')) {
-      setError('Please enter a valid email address');
-      return false;
+
+    if (email.trim()) {
+      // Only validate email if provided
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError('Please enter a valid email address');
+        return false;
+      }
     }
-    
+
     if (!password) {
       setError('Please enter a password');
       return false;
     }
-    
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
-    
+
+    setError(null);
     return true;
   };
 
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showLoadingModal, setShowLoadingModal] = useState(false);
-  
-  // Animation values for the loading animation
-  const rotation = useSharedValue(0);
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-  
-  // Animated styles
-  const animatedIconStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { rotate: `${rotation.value}deg` },
-        { scale: scale.value }
-      ],
-      opacity: opacity.value
-    };
-  });
-  
-  // Start animations when loading modal is shown
-  useEffect(() => {
-    if (showLoadingModal) {
-      // Rotation animation
-      rotation.value = withRepeat(
-        withTiming(360, { duration: 2000, easing: Easing.linear }), 
-        -1 // Infinite repeat
-      );
-      
-      // Pulse animation
-      scale.value = withRepeat(
-        withSequence(
-          withTiming(1.2, { duration: 500, easing: Easing.out(Easing.ease) }),
-          withTiming(1, { duration: 500, easing: Easing.in(Easing.ease) })
-        ),
-        -1 // Infinite repeat
-      );
-      
-      // Opacity animation
-      opacity.value = withRepeat(
-        withSequence(
-          withTiming(0.7, { duration: 700 }),
-          withTiming(1, { duration: 700 })
-        ),
-        -1 // Infinite repeat
-      );
-    }
-  }, [showLoadingModal]);
-
   const handleSignUp = useCallback(async () => {
     if (!validateForm()) return;
-    
+
     try {
       setShowLoadingModal(true);
-      setError(null);
-      
-      // Use the email if provided, otherwise it will be generated from the phone number
-      const emailToUse = email.trim() ? email : undefined;
-      
-      // Remove the simulation delay in production
-      // await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const result = await signup(fullName, phoneNumber, emailToUse, password);
-      
+
+      const result = await signup(fullName, phoneNumber, email || undefined, password);
+
       if (result.success) {
         setShowLoadingModal(false);
         setShowSuccessModal(true);
-        
-        // Automatically redirect to login page after 3 seconds
+
+        // Redirect to login after 3 seconds
         setTimeout(() => {
           setShowSuccessModal(false);
-          router.replace('/(auth)');
+          router.push('/(auth)');
         }, 3000);
       } else {
         setShowLoadingModal(false);
-        // Display the specific error message from the backend if available
-        setError(result.error || 'Failed to create account. Please try again.');
-        console.error('Signup failed with error:', result.error);
+        setError(result.error || 'Failed to create account');
       }
     } catch (err) {
       console.error('Signup error:', err);
@@ -157,7 +128,11 @@ export default function SignUp() {
   }, [fullName, phoneNumber, email, password, confirmPassword, signup]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+    >
       <StatusBar style="light" />
       <LinearGradient
         colors={['#1a237e', '#0d47a1', '#01579b']}
@@ -170,12 +145,133 @@ export default function SignUp() {
         blurRadius={60}
       />
       
-      {/* Loading Modal */}
-      <Modal
-        visible={showLoadingModal}
-        transparent={true}
-        animationType="fade"
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
+
+        <Animated.View entering={FadeIn.delay(200).duration(1000)} style={styles.header}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Ionicons name="planet" size={40} color="#fff" />
+            </View>
+          </View>
+          <Text style={styles.title}>Join Us</Text>
+          <Text style={styles.subtitle}>Create your account to get started</Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(400).duration(1000)} style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color="#fff" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Full Name"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              style={styles.input}
+              autoCapitalize="words"
+              value={fullName}
+              onChangeText={setFullName}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="call-outline" size={20} color="#fff" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Phone Number"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              style={styles.input}
+              keyboardType="phone-pad"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color="#fff" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Email (Optional)"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#fff" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              style={styles.input}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#fff" />
+            </Pressable>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#fff" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Confirm Password"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              style={styles.input}
+              secureTextEntry={!showConfirmPassword}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#fff" />
+            </Pressable>
+          </View>
+
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+
+          <Pressable
+            style={[styles.button, loading && styles.disabledButton]}
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#1a237e" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Create Account</Text>
+            )}
+          </Pressable>
+
+          <View style={styles.orContainer}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          <View style={styles.socialButtons}>
+            <Pressable style={styles.socialButton}>
+              <Ionicons name="logo-google" size={24} color="#fff" />
+            </Pressable>
+            <Pressable style={styles.socialButton}>
+              <Ionicons name="logo-apple" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(600).duration(1000)} style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <Link href="/(auth)" asChild>
+            <Pressable>
+              <Text style={styles.footerLink}>Login</Text>
+            </Pressable>
+          </Link>
+        </Animated.View>
+      </ScrollView>
+
+      {/* Loading Modal */}
+      <Modal visible={showLoadingModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
           <LinearGradient
@@ -190,176 +286,42 @@ export default function SignUp() {
           </LinearGradient>
         </View>
       </Modal>
-      
+
       {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent={true}
-        animationType="fade"
-      >
+      <Modal visible={showSuccessModal} transparent={true} animationType="fade">
         <View style={styles.modalContainer}>
           <BlurView intensity={30} style={StyleSheet.absoluteFill} tint="dark" />
           <LinearGradient
             colors={['rgba(46, 125, 50, 0.9)', 'rgba(56, 142, 60, 0.9)']}
             style={styles.successModalContent}
           >
-            <Animated.View 
-              entering={FadeIn.delay(300).duration(500)}
-              style={styles.successIconContainer}
-            >
-              <Ionicons name="checkmark-circle" size={60} color="#fff" />
+            <Animated.View entering={FadeIn.duration(500)} style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle-outline" size={80} color="#4CAF50" />
             </Animated.View>
-            <Animated.Text 
-              entering={FadeInDown.delay(500).duration(500)}
-              style={styles.successText}
-            >
+            <Animated.Text entering={FadeInDown.delay(500).duration(500)} style={styles.successText}>
               Success!
             </Animated.Text>
-            <Animated.Text 
-              entering={FadeInDown.delay(700).duration(500)}
-              style={styles.successSubText}
-            >
+            <Animated.Text entering={FadeInDown.delay(500).duration(500)} style={styles.successText}>
               Your account has been created successfully
             </Animated.Text>
-            <Animated.Text 
-              entering={FadeInDown.delay(900).duration(500)}
-              style={styles.redirectText}
-            >
+            <Animated.Text entering={FadeInDown.delay(900).duration(500)} style={styles.redirectText}>
               Redirecting to login...
             </Animated.Text>
           </LinearGradient>
         </View>
       </Modal>
-
-      <Animated.View 
-        entering={FadeIn.delay(200).duration(1000)}
-        style={styles.header}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logo}>
-            <Ionicons name="planet" size={40} color="#fff" />
-          </View>
-        </View>
-        <Text style={styles.title}>Join Us</Text>
-        <Text style={styles.subtitle}>Create your account to get started</Text>
-      </Animated.View>
-
-      <Animated.View 
-        entering={FadeInUp.delay(400).duration(1000)}
-        style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#fff" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Full Name"
-            placeholderTextColor="rgba(255,255,255,0.7)"
-            style={styles.input}
-            autoCapitalize="words"
-            value={fullName}
-            onChangeText={setFullName}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="call-outline" size={20} color="#fff" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Phone Number"
-            placeholderTextColor="rgba(255,255,255,0.7)"
-            style={styles.input}
-            keyboardType="phone-pad"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#fff" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Email (Optional)"
-            placeholderTextColor="rgba(255,255,255,0.7)"
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#fff" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="rgba(255,255,255,0.7)"
-            style={styles.input}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#fff" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Confirm Password"
-            placeholderTextColor="rgba(255,255,255,0.7)"
-            style={styles.input}
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
-
-        {error && (
-          <Text style={styles.errorText}>{error}</Text>
-        )}
-        
-        <Pressable 
-          style={[styles.button, loading && styles.disabledButton]} 
-          onPress={handleSignUp}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#1a237e" size="small" />
-          ) : (
-            <Text style={styles.buttonText}>Create Account</Text>
-          )}
-        </Pressable>
-
-        <View style={styles.orContainer}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>OR</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        <View style={styles.socialButtons}>
-          <Pressable style={styles.socialButton}>
-            <Ionicons name="logo-google" size={24} color="#fff" />
-          </Pressable>
-          <Pressable style={styles.socialButton}>
-            <Ionicons name="logo-apple" size={24} color="#fff" />
-          </Pressable>
-        </View>
-      </Animated.View>
-
-      <Animated.View 
-        entering={FadeInDown.delay(600).duration(1000)}
-        style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
-        <Link href="/(auth)" asChild>
-          <Pressable>
-            <Text style={styles.footerLink}>Login</Text>
-          </Pressable>
-        </Link>
-      </Animated.View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
-
-// Need to import BlurView for the modals
-const BlurView = require('expo-blur').BlurView;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   header: {
     marginTop: '10%',
@@ -397,17 +359,20 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    marginBottom: 15,
+    paddingHorizontal: 15,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
+  },
+  eyeIcon: {
+    padding: 10,
   },
   input: {
     flex: 1,
-    height: 52,
+    height: 50,
     color: '#fff',
     fontSize: 16,
   },

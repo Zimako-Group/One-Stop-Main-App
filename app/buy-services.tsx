@@ -27,6 +27,8 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
+import { useWallet } from '../src/contexts/WalletContext';
+import { purchaseMtnAirtime } from '../src/utils/mtnAirtimeService';
 
 // Types for our service options
 type Network = 'MTN' | 'ESM' | null;
@@ -187,23 +189,29 @@ const ESM_AIRTIME_PACKAGES: Package[] = [
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function BuyServices() {
+  const { balance, deduct } = useWallet();
+  const { service } = useLocalSearchParams();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ serviceType: ServiceType }>();
   
+  // State for service selection
   const [network, setNetwork] = useState<Network>(null);
   const [serviceType, setServiceType] = useState<ServiceType>(null);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [customAmount, setCustomAmount] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [transactionId, setTransactionId] = useState('');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
-  const [showCardDetailsModal, setShowCardDetailsModal] = useState(false);
-  const [saveCard, setSaveCard] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  
+  // State for MoMo payment
+  const [showMomoModal, setShowMomoModal] = useState(false);
+  const [momoNumber, setMomoNumber] = useState('');
+  const [momoError, setMomoError] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   
@@ -216,13 +224,9 @@ export default function BuyServices() {
 
   // Wallet state
   const [walletBalance, setWalletBalance] = useState(150.00); // Dummy wallet balance
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [insufficientFunds, setInsufficientFunds] = useState(false);
-
-  // MTN MoMo state
-  const [showMomoModal, setShowMomoModal] = useState(false);
-  const [momoNumber, setMomoNumber] = useState('');
-  const [momoError, setMomoError] = useState<string | null>(null);
+  
+  // MoMo state
 
   // e-Mali state
   const [showEMaliModal, setShowEMaliModal] = useState(false);
@@ -350,156 +354,105 @@ export default function BuyServices() {
     }
 
     setError(null);
-    // Show confirmation modal instead of proceeding directly
-    setShowConfirmModal(true);
-  };
-
-  // Handle payment method selection
-  const handlePaymentMethodSelect = (method: string) => {
-    setSelectedPaymentMethod(method);
-    setShowPaymentMethodModal(false);
     
-    if (method === 'Bank Card') {
-      setShowCardDetailsModal(true);
-    } else if (method === 'Wallet') {
-      // Check if wallet has sufficient balance
-      const amount = selectedPackage ? parseFloat(selectedPackage.price) : parseFloat(customAmount);
-      if (walletBalance >= amount) {
-        setShowWalletModal(true);
-      } else {
-        setInsufficientFunds(true);
-        setShowWalletModal(true);
-      }
-    } else if (method === 'MoMo') {
+    // If MTN airtime is selected, use the MTN API directly
+    if (network === 'MTN' && serviceType === 'airtime') {
+      // For MTN airtime, we'll use the MTN MoMo API
       setShowMomoModal(true);
-    } else if (method === 'e-Mali') {
-      setShowEMaliModal(true);
     } else {
-      processPayment();
+      // For other services, show the confirmation modal
+      setShowConfirmModal(true);
     }
   };
-
-  // Format card number with spaces
-  const formatCardNumber = (text: string) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, '');
-    // Add space after every 4 digits
-    const formatted = cleaned.replace(/(\d{4})(?=\d)/g, '$1 ');
-    return formatted;
-  };
-
-  // Format expiry date as MM/YY
-  const formatExpiryDate = (text: string) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, '');
-    
-    if (cleaned.length > 2) {
-      return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
-    }
-    
-    return cleaned;
-  };
-
-  // Validate card details
-  const validateCardDetails = () => {
-    // Reset error
-    setCardError(null);
-    
-    // Validate card number (should be 16 digits)
-    const cardDigits = cardNumber.replace(/\s/g, '');
-    if (cardDigits.length !== 16) {
-      setCardError('Card number must be 16 digits');
-      return false;
-    }
-    
-    // Validate cardholder name
-    if (cardholderName.trim().length < 3) {
-      setCardError('Please enter a valid cardholder name');
-      return false;
-    }
-    
-    // Validate expiry date (should be MM/YY format)
-    const expiryPattern = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
-    if (!expiryPattern.test(expiryDate)) {
-      setCardError('Expiry date must be in MM/YY format');
-      return false;
-    }
-    
-    // Validate CVV (should be 3 digits)
-    if (cvv.length !== 3 || !/^\d+$/.test(cvv)) {
-      setCardError('CVV must be 3 digits');
-      return false;
-    }
-    
-    return true;
-  };
-
-  // Handle card payment submission
-  const handleCardPayment = () => {
-    if (validateCardDetails()) {
-      setIsProcessingPayment(true);
-      setShowCardDetailsModal(false);
-      setShowProcessingModal(true);
-      startSpinAnimation();
+  
+  // Process MTN airtime purchase using the MTN API
+  const processMtnAirtime = async () => {
+    try {
+      setLoading(true);
       
-      // Simulate payment processing
-      setTimeout(() => {
-        setShowProcessingModal(false);
-        setIsProcessingPayment(false);
-        processPayment();
-      }, 3000); // Show loading for 3 seconds
+      // Get the amount to purchase
+      const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+      
+      // Call the MTN API to purchase airtime
+      const result = await purchaseMtnAirtime({
+        phoneNumber: phoneNumber,
+        amount: amount,
+        payerPhoneNumber: momoNumber || phoneNumber // Use MoMo number if provided, otherwise use recipient number
+      });
+      
+      if (result.success) {
+        // Set the transaction ID and show success modal
+        setTransactionId(result.transactionId || '');
+        setShowMomoModal(false);
+        setShowSuccessModal(true);
+        
+        // Log the successful transaction
+        console.log('MTN airtime purchase successful:', result);
+      } else {
+        Alert.alert('Purchase Failed', result.message);
+      }
+    } catch (error) {
+      console.error('MTN airtime purchase error:', error);
+      Alert.alert('Purchase Failed', 'An error occurred while processing your airtime purchase.');
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Handle wallet payment
-  const handleWalletPayment = () => {
-    if (insufficientFunds) {
-      // Navigate to top up screen (would be implemented in a real app)
-      setShowWalletModal(false);
-      // For demo purposes, we'll just show an alert
-      Alert.alert('Top Up', 'Navigating to wallet top-up screen...');
+  
+  // Handle MoMo payment submission
+  const handleMomoPayment = async () => {
+    if (!momoNumber || momoNumber.length < 8) {
+      setMomoError('Please enter a valid phone number');
       return;
     }
     
-    setShowWalletModal(false);
-    setIsProcessingPayment(true);
-    setShowProcessingModal(true);
-    startSpinAnimation();
+    setMomoError(null);
     
-    // Simulate payment processing
-    setTimeout(() => {
-      // Deduct from wallet balance
-      const amount = selectedPackage ? parseFloat(selectedPackage.price) : parseFloat(customAmount);
-      setWalletBalance(prev => parseFloat((prev - amount).toFixed(2)));
-      
-      setShowProcessingModal(false);
-      setIsProcessingPayment(false);
-      processPayment();
-    }, 3000);
+    // For MTN airtime, use the MTN API
+    if (network === 'MTN' && serviceType === 'airtime') {
+      processMtnAirtime();
+    } else {
+      // For other services, use the existing payment flow
+      setShowMomoModal(false);
+      setShowConfirmModal(true);
+    }
   };
 
-  // Process payment after method selection
-  const processPayment = () => {
-    setIsProcessingPayment(true);
+// Process MTN airtime purchase using the MTN API
+const processMtnAirtimePurchase = async () => {
+  try {
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      setIsProcessingPayment(false);
-      // Generate a random transaction ID
-      setTransactionId(`TRX${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`);
-      // Show success modal
+    // Get the amount to purchase
+    const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+    
+    // Get the MoMo phone number from the input or use the recipient number
+    const payerPhoneNumber = momoNumber || phoneNumber;
+    
+    // Call the MTN API to purchase airtime
+    const result = await airtimeService.purchaseMtnAirtime({
+      phoneNumber: phoneNumber,
+      amount: amount,
+      payerPhoneNumber: payerPhoneNumber
+    });
+    
+    if (result.success) {
+      // Set the transaction ID and show success modal
+      setTransactionId(result.transactionId || '');
+      setShowMomoModal(false);
       setShowSuccessModal(true);
-    }, 2000);
-  };
+    } else {
+      Alert.alert('Purchase Failed', result.message);
+    }
+  } catch (error) {
+    console.error('MTN airtime purchase error:', error);
+    Alert.alert('Purchase Failed', 'An error occurred while processing your airtime purchase.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  // Handle confirm purchase
-  const handleConfirmPurchase = async () => {
-    setShowConfirmModal(false);
-    // Show payment method selection modal
-    setShowPaymentMethodModal(true);
-  };
+
 
   // Close success modal and reset form
   const handleCloseSuccess = () => {
