@@ -12,6 +12,7 @@ const API_CONFIG = {
   COLLECTION_STATUS_ENDPOINT: '/collection/v1_0/requesttopay/',
   DISBURSEMENT_ENDPOINT: '/disbursement/v1_0/transfer',
   DISBURSEMENT_STATUS_ENDPOINT: '/disbursement/v1_0/transfer/',
+  TOKEN_ENDPOINT: '/collection/token/',
   ENVIRONMENT: 'sandbox', // Change to 'production' in production
   CURRENCY: 'SZL', // Eswatini Lilangeni
 };
@@ -60,30 +61,24 @@ export const generateUUID = (): string => {
  */
 export const getAccessToken = async (credentials: Omit<MoMoCredentials, 'accessToken'>): Promise<string> => {
   try {
-    // In a real implementation, this would make an actual API call
-    // For now, we'll simulate a successful response
+    // Create the authorization header using Basic Auth
+    const authHeader = `Basic ${btoa(`${credentials.userId}:${credentials.apiKey}`)}`;  // Using btoa for base64 encoding in browser
     
-    /**
-     * Example API call:
-     * 
-     * const response = await fetch(`${API_CONFIG.BASE_URL}/collection/token/`, {
-     *   method: 'POST',
-     *   headers: {
-     *     'Authorization': `Basic ${Buffer.from(`${credentials.userId}:${credentials.apiKey}`).toString('base64')}`,
-     *     'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
-     *   }
-     * });
-     * 
-     * if (!response.ok) {
-     *   throw new Error(`Failed to get access token: ${response.status}`);
-     * }
-     * 
-     * const data = await response.json();
-     * return data.access_token;
-     */
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.TOKEN_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
+      }
+    });
     
-    // Simulated response
-    return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik1UTiBNb01vIEFQSSIsImlhdCI6MTUxNjIzOTAyMn0';
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get access token: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data.access_token;
   } catch (error) {
     console.error('Error getting access token:', error);
     throw error;
@@ -103,40 +98,34 @@ export const initiatePayment = async (
   try {
     const referenceId = generateUUID();
     
-    /**
-     * Example API call:
-     * 
-     * const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.COLLECTION_ENDPOINT}`, {
-     *   method: 'POST',
-     *   headers: {
-     *     'Authorization': `Bearer ${credentials.accessToken}`,
-     *     'X-Reference-Id': referenceId,
-     *     'X-Target-Environment': API_CONFIG.ENVIRONMENT,
-     *     'Content-Type': 'application/json',
-     *     'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
-     *   },
-     *   body: JSON.stringify({
-     *     amount: paymentDetails.amount,
-     *     currency: API_CONFIG.CURRENCY,
-     *     externalId: paymentDetails.externalId,
-     *     payer: {
-     *       partyIdType: 'MSISDN',
-     *       partyId: paymentDetails.phoneNumber
-     *     },
-     *     payerMessage: paymentDetails.payerMessage,
-     *     payeeNote: paymentDetails.payeeNote
-     *   })
-     * });
-     * 
-     * if (!response.ok) {
-     *   throw new Error(`Failed to initiate payment: ${response.status}`);
-     * }
-     * 
-     * // The API doesn't return a response body for successful requests
-     * return { referenceId };
-     */
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.COLLECTION_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${credentials.accessToken}`,
+        'X-Reference-Id': referenceId,
+        'X-Target-Environment': API_CONFIG.ENVIRONMENT,
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
+      },
+      body: JSON.stringify({
+        amount: paymentDetails.amount,
+        currency: API_CONFIG.CURRENCY,
+        externalId: paymentDetails.externalId,
+        payer: {
+          partyIdType: 'MSISDN',
+          partyId: paymentDetails.phoneNumber
+        },
+        payerMessage: paymentDetails.payerMessage,
+        payeeNote: paymentDetails.payeeNote
+      })
+    });
     
-    // Simulated response
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to initiate payment: ${response.status} - ${errorText}`);
+    }
+    
+    // The API doesn't return a response body for successful requests
     return { referenceId };
   } catch (error) {
     console.error('Error initiating payment:', error);
@@ -155,31 +144,25 @@ export const checkPaymentStatus = async (
   referenceId: string
 ): Promise<{status: string, reason?: string}> => {
   try {
-    /**
-     * Example API call:
-     * 
-     * const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.COLLECTION_STATUS_ENDPOINT}${referenceId}`, {
-     *   method: 'GET',
-     *   headers: {
-     *     'Authorization': `Bearer ${credentials.accessToken}`,
-     *     'X-Target-Environment': API_CONFIG.ENVIRONMENT,
-     *     'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
-     *   }
-     * });
-     * 
-     * if (!response.ok) {
-     *   throw new Error(`Failed to check payment status: ${response.status}`);
-     * }
-     * 
-     * const data = await response.json();
-     * return {
-     *   status: data.status,
-     *   reason: data.reason
-     * };
-     */
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.COLLECTION_STATUS_ENDPOINT}${referenceId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${credentials.accessToken}`,
+        'X-Target-Environment': API_CONFIG.ENVIRONMENT,
+        'Ocp-Apim-Subscription-Key': credentials.subscriptionKey
+      }
+    });
     
-    // Simulated response
-    return { status: 'SUCCESSFUL' };
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to check payment status: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return {
+      status: data.status,
+      reason: data.reason
+    };
   } catch (error) {
     console.error('Error checking payment status:', error);
     throw error;

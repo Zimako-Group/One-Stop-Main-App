@@ -7,12 +7,23 @@
 import { generateUUID, getAccessToken, initiatePayment, checkPaymentStatus } from './momoApi';
 
 // MTN MoMo API credentials - In production, these should be stored securely
-// and potentially retrieved from a secure backend
+// and potentially retrieved from a secure backend or environment variables
 const MTN_CREDENTIALS = {
-  apiKey: 'YOUR_API_KEY', // Replace with your actual API key
-  userId: 'YOUR_USER_ID', // Replace with your actual User ID
-  subscriptionKey: 'YOUR_SUBSCRIPTION_KEY', // Replace with your actual Subscription Key
+  apiKey: process.env.MTN_API_KEY || 'YOUR_API_KEY', // Will be replaced by user
+  userId: process.env.MTN_USER_ID || 'YOUR_USER_ID', // Will be replaced by user
+  subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY || 'YOUR_SUBSCRIPTION_KEY', // Will be replaced by user
   accessToken: '' // This will be populated at runtime
+};
+
+// Function to update credentials at runtime
+export const updateMoMoCredentials = (credentials: {
+  apiKey?: string;
+  userId?: string;
+  subscriptionKey?: string;
+}) => {
+  if (credentials.apiKey) MTN_CREDENTIALS.apiKey = credentials.apiKey;
+  if (credentials.userId) MTN_CREDENTIALS.userId = credentials.userId;
+  if (credentials.subscriptionKey) MTN_CREDENTIALS.subscriptionKey = credentials.subscriptionKey;
 };
 
 // Interface for airtime purchase request
@@ -67,21 +78,39 @@ export const purchaseMtnAirtime = async (
     
     const { referenceId } = await initiatePayment(credentials, paymentRequest);
     
-    // Step 4: In a real implementation, you would check the payment status
-    // and then call the telco's API to provision the airtime
-    // For now, we'll simulate this process
+    // Step 4: Check the payment status and provision airtime if successful
+    // Note: In a production environment with high volume, you would use webhooks instead
+    // of polling for status, but for simplicity we'll poll here
     
-    // Wait for payment to be processed (in production, this would be handled by webhooks)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Poll for payment status (retry a few times with delay)
+    let paymentStatus: { status: string; reason?: string } = { status: 'PENDING' };
+    let attempts = 0;
+    const maxAttempts = 5;
     
-    // Check payment status
-    const paymentStatus = await checkPaymentStatus(credentials, referenceId);
+    while (attempts < maxAttempts) {
+      // Wait a bit before checking (simulating async payment processing)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Check payment status
+      paymentStatus = await checkPaymentStatus(credentials, referenceId);
+      
+      // If we have a final status, break out of the loop
+      if (paymentStatus.status === 'SUCCESSFUL' || 
+          paymentStatus.status === 'FAILED' || 
+          paymentStatus.status === 'REJECTED') {
+        break;
+      }
+      
+      attempts++;
+    }
     
     if (paymentStatus.status === 'SUCCESSFUL') {
-      // In production: Call MTN's airtime provisioning API here
-      
       // Generate a transaction ID for the airtime purchase
       const transactionId = generateUUID();
+      
+      // In a full implementation, you would call the telco's API to provision the airtime here
+      // This would typically be a separate API call to the mobile operator's provisioning system
+      // For now, we'll assume the airtime is provisioned automatically by MTN's system
       
       return {
         success: true,
@@ -115,22 +144,22 @@ export const checkAirtimePurchaseStatus = async (
   referenceId: string
 ): Promise<{status: string, message: string}> => {
   try {
-    // Get access token
+    // Get access token for the API call
     const accessToken = await getAccessToken({
       apiKey: MTN_CREDENTIALS.apiKey,
       userId: MTN_CREDENTIALS.userId,
       subscriptionKey: MTN_CREDENTIALS.subscriptionKey
     });
     
-    // Update credentials with new access token
     const credentials = {
       ...MTN_CREDENTIALS,
       accessToken
     };
     
-    // Check payment status
+    // Check payment status with the MoMo API
     const paymentStatus = await checkPaymentStatus(credentials, referenceId);
     
+    // Map the MoMo API status to our application status
     if (paymentStatus.status === 'SUCCESSFUL') {
       return {
         status: 'completed',
