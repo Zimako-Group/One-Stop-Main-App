@@ -89,20 +89,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Normalize the phone number by removing all non-numeric characters
-      const normalizedPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+      // Keep the phone number as provided (with the +268 prefix)
+      const formattedPhoneNumber = phoneNumber;
       
-      // Store both the original and normalized phone number
-      const formattedPhoneNumber = phoneNumber; // Keep the original format for display
-      const phoneForAuth = normalizedPhoneNumber; // Use normalized for authentication
+      // Extract just the digits for authentication
+      const phoneDigits = phoneNumber.replace(/[^0-9]/g, '');
       
-      // If email is not provided, generate one using the normalized phone number
-      const userEmail = email || `${phoneForAuth}@onestop.com`;
+      // If email is not provided, generate one using the phone digits
+      const userEmail = email || `${phoneDigits}@onestop.com`;
       
       console.log('Attempting signup with:', { 
         fullName, 
-        originalPhoneNumber: phoneNumber,
-        normalizedPhoneNumber: phoneForAuth, 
+        phoneNumber: formattedPhoneNumber,
         email: userEmail 
       });
       
@@ -112,8 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             full_name: fullName,
-            phone_number: formattedPhoneNumber,
-            normalized_phone: phoneForAuth // Store normalized version for auth
+            phone_number: formattedPhoneNumber
           }
         }
       });
@@ -161,7 +158,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: data.user.id,
             full_name: fullName,
             phone_number: phoneNumber,
-            normalized_phone: normalizedPhoneNumber, // Store normalized version for auth
             email: userEmail,
             account_number: accountNumber
           }

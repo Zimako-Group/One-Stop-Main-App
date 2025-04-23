@@ -64,10 +64,11 @@ export default function Signup() {
       return false;
     }
 
-    // Basic phone number validation
-    const phoneRegex = /^[0-9]{8,12}$/;
+    // Basic phone number validation for Eswatini numbers
+    // Should be 7-8 digits for local numbers
+    const phoneRegex = /^[0-9]{7,8}$/;
     if (!phoneRegex.test(phoneNumber.replace(/[^0-9]/g, ''))) {
-      setError('Please enter a valid phone number');
+      setError('Please enter a valid Eswatini phone number');
       return false;
     }
 
@@ -104,8 +105,11 @@ export default function Signup() {
 
     try {
       setShowLoadingModal(true);
+      
+      // Add the Eswatini country code to the phone number
+      const formattedPhoneNumber = `+268${phoneNumber.replace(/[^0-9]/g, '')}`;
 
-      const result = await signup(fullName, phoneNumber, email || undefined, password);
+      const result = await signup(fullName, formattedPhoneNumber, email || undefined, password);
 
       if (result.success) {
         setShowLoadingModal(false);
@@ -175,14 +179,17 @@ export default function Signup() {
 
           <View style={styles.inputContainer}>
             <Ionicons name="call-outline" size={20} color="#fff" style={styles.inputIcon} />
-            <TextInput
-              placeholder="Phone Number"
-              placeholderTextColor="rgba(255,255,255,0.7)"
-              style={styles.input}
-              keyboardType="phone-pad"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-            />
+            <View style={styles.phoneInputContainer}>
+              <Text style={styles.prefixText}>+268</Text>
+              <TextInput
+                placeholder="Phone Number"
+                placeholderTextColor="rgba(255,255,255,0.7)"
+                style={styles.phoneInput}
+                keyboardType="phone-pad"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
@@ -371,6 +378,23 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   input: {
+    flex: 1,
+    height: 50,
+    color: '#fff',
+    fontSize: 16,
+  },
+  phoneInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  prefixText: {
+    color: '#fff',
+    fontSize: 16,
+    marginRight: 5,
+    fontWeight: 'bold',
+  },
+  phoneInput: {
     flex: 1,
     height: 50,
     color: '#fff',

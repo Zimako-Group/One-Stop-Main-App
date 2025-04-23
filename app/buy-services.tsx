@@ -189,7 +189,7 @@ const ESM_AIRTIME_PACKAGES: Package[] = [
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function BuyServices() {
-  const { balance, deduct } = useWallet();
+  const { balance, deductFromWallet } = useWallet();
   const { service } = useLocalSearchParams();
   const { width } = useWindowDimensions();
   
@@ -216,9 +216,11 @@ export default function BuyServices() {
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   
   // Card details state
+  const [showCardDetailsModal, setShowCardDetailsModal] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
   const [cardholderName, setCardholderName] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [saveCard, setSaveCard] = useState(false);
   const [cvv, setCvv] = useState('');
   const [cardError, setCardError] = useState<string | null>(null);
 
@@ -430,7 +432,7 @@ const processMtnAirtimePurchase = async () => {
     const payerPhoneNumber = momoNumber || phoneNumber;
     
     // Call the MTN API to purchase airtime
-    const result = await airtimeService.purchaseMtnAirtime({
+    const result = await purchaseMtnAirtime({
       phoneNumber: phoneNumber,
       amount: amount,
       payerPhoneNumber: payerPhoneNumber
@@ -454,15 +456,240 @@ const processMtnAirtimePurchase = async () => {
 
 
 
+  // Format card number with spaces after every 4 digits
+  const formatCardNumber = (value: string): string => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Add a space after every 4 digits
+    const formatted = digits.replace(/(.{4})/g, '$1 ').trim();
+    
+    return formatted;
+  };
+  
+  // Format expiry date as MM/YY
+  const formatExpiryDate = (value: string): string => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Format as MM/YY
+    if (digits.length <= 2) {
+      return digits;
+    } else {
+      return `${digits.substring(0, 2)}/${digits.substring(2, 4)}`;
+    }
+  };
+  
+  // Handle payment method selection
+  const handlePaymentMethodSelect = (method: 'Wallet' | 'MoMo' | 'e-Mali' | 'Bank Card') => {
+    // Close the payment method modal
+    setShowPaymentMethodModal(false);
+    
+    // Handle different payment methods
+    if (method === 'Wallet') {
+      // Process wallet payment directly
+      handleConfirmPurchase();
+    } else if (method === 'MoMo') {
+      // Show MoMo payment modal
+      setShowMomoModal(true);
+    } else if (method === 'e-Mali') {
+      // Show eMali payment modal (not implemented yet)
+      Alert.alert('Coming Soon', 'e-Mali payment integration is coming soon.');
+    } else if (method === 'Bank Card') {
+      // Show card details modal
+      setShowCardDetailsModal(true);
+    }
+  };
+  
+  // Process payment after successful payment processing
+  const processPayment = () => {
+    try {
+      // Get the amount to purchase
+      const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+      
+      // Get the description based on the selected package or custom amount
+      const description = selectedPackage 
+        ? `${network} ${serviceType}: ${selectedPackage.name}` 
+        : `${network} ${serviceType}: E${amount}`;
+      
+      // Set payment method for the receipt
+      setPaymentMethod('MoMo');
+      
+      // Generate a transaction ID
+      const txId = Math.random().toString(36).substring(2, 15);
+      setTransactionId(txId);
+      
+      // Show the success modal
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error finalizing payment:', error);
+      Alert.alert('Error', 'An error occurred while finalizing your payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle wallet payment submission
+  const handleWalletPayment = async () => {
+    try {
+      // Set loading state
+      setLoading(true);
+      
+      // Get the amount to purchase
+      const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+      
+      // Check if there's enough balance
+      if (balance < amount) {
+        setInsufficientFunds(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Get the description based on the selected package or custom amount
+      const description = selectedPackage 
+        ? `${network} ${serviceType}: ${selectedPackage.name}` 
+        : `${network} ${serviceType}: E${amount}`;
+      
+      // Deduct from wallet
+      const success = await deductFromWallet(amount, description, 'purchase');
+      
+      if (success) {
+        // Close the wallet modal
+        setShowWalletModal(false);
+        
+        // Set payment method for the receipt
+        setPaymentMethod('Wallet');
+        
+        // Generate a transaction ID
+        const txId = Math.random().toString(36).substring(2, 15);
+        setTransactionId(txId);
+        
+        // Show the success modal
+        setShowSuccessModal(true);
+      } else {
+        // Show insufficient balance error
+        setInsufficientFunds(true);
+      }
+    } catch (error) {
+      console.error('Error processing wallet payment:', error);
+      Alert.alert('Error', 'An error occurred while processing your payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle card payment submission
+  const handleCardPayment = async () => {
+    try {
+      // Validate card details
+      if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
+        setCardError('Please enter a valid card number');
+        return;
+      }
+      
+      if (!cardholderName) {
+        setCardError('Please enter the cardholder name');
+        return;
+      }
+      
+      if (!expiryDate || expiryDate.length < 5) {
+        setCardError('Please enter a valid expiry date');
+        return;
+      }
+      
+      if (!cvv || cvv.length < 3) {
+        setCardError('Please enter a valid CVV');
+        return;
+      }
+      
+      // Clear any previous errors
+      setCardError(null);
+      
+      // Set loading state
+      setLoading(true);
+      
+      // Get the amount to purchase
+      const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+      
+      // In a real app, you would process the payment with a payment gateway here
+      // For this demo, we'll simulate a successful payment after a short delay
+      setTimeout(() => {
+        // Close the card details modal
+        setShowCardDetailsModal(false);
+        
+        // Set payment method for the receipt
+        setPaymentMethod('Bank Card');
+        
+        // Generate a transaction ID
+        const txId = Math.random().toString(36).substring(2, 15);
+        setTransactionId(txId);
+        
+        // Show the success modal
+        setShowSuccessModal(true);
+        
+        // Reset loading state
+        setLoading(false);
+        
+        // If user chose to save the card, you would store it securely here
+        if (saveCard) {
+          // In a real app, you would securely store the card details
+          console.log('Card saved for future use');
+        }
+      }, 2000); // Simulate a 2-second processing time
+    } catch (error) {
+      console.error('Error processing card payment:', error);
+      setCardError('An error occurred while processing your payment');
+      setLoading(false);
+    }
+  };
+  
+  // Handle confirmation of purchase from the modal
+  const handleConfirmPurchase = async () => {
+    try {
+      setLoading(true);
+      
+      // Get the amount to purchase
+      const amount = selectedPackage ? selectedPackage.price : parseFloat(customAmount || '0');
+      
+      // Get the description based on the selected package or custom amount
+      const description = selectedPackage 
+        ? `${network} ${serviceType}: ${selectedPackage.name}` 
+        : `${network} ${serviceType}: E${amount}`;
+      
+      // Deduct from wallet
+      const success = await deductFromWallet(amount, description, 'purchase');
+      
+      if (success) {
+        // Generate a transaction ID
+        const txId = Math.random().toString(36).substring(2, 15);
+        setTransactionId(txId);
+        
+        // Close the confirmation modal and show the success modal
+        setShowConfirmModal(false);
+        setShowSuccessModal(true);
+      } else {
+        // Show insufficient balance error
+        Alert.alert('Insufficient Balance', 'You do not have enough balance to complete this purchase.');
+        setShowConfirmModal(false);
+      }
+    } catch (error) {
+      console.error('Error processing purchase:', error);
+      Alert.alert('Error', 'An error occurred while processing your purchase. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Close success modal and reset form
   const handleCloseSuccess = () => {
     setShowSuccessModal(false);
-    // Reset form
+    
+    // Reset the form
     setNetwork(null);
     setServiceType(null);
-    setSelectedPackage(null);
     setPhoneNumber('');
     setCustomAmount('');
+    setSelectedPackage(null);
   };
 
   return (
@@ -1715,7 +1942,7 @@ const processMtnAirtimePurchase = async () => {
                 
                 <View style={styles.transactionDetails}>
                   <Text style={styles.transactionLabel}>Payment Method:</Text>
-                  <Text style={styles.transactionValue}>{selectedPaymentMethod}</Text>
+                  <Text style={styles.transactionValue}>{paymentMethod || 'Wallet'}</Text>
                 </View>
                 
                 <View style={styles.transactionDetails}>

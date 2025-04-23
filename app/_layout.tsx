@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { WalletProvider } from '../src/contexts/WalletContext';
 import { AuthProvider } from '../src/contexts/AuthContext';
+import { setupSupabase } from '../src/utils/setupSupabase';
+import { initializeStorage } from '../src/utils/profileImageService';
 
 declare global {
   interface Window {
@@ -13,7 +15,23 @@ declare global {
 
 export default function RootLayout() {
   useEffect(() => {
-    window.frameworkReady?.();
+    // Initialize app
+    const initApp = async () => {
+      try {
+        // Setup Supabase database schema
+        await setupSupabase();
+        
+        // Initialize storage buckets
+        await initializeStorage();
+        
+        // Framework ready signal
+        window.frameworkReady?.();
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+    
+    initApp();
   }, []);
 
   return (

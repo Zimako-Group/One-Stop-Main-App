@@ -1,23 +1,56 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ScrollView, Switch, TextInput, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Image, ScrollView, Switch, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useAuth } from '../src/contexts/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadProfileImage, getInitialsAvatar, initializeStorage } from '../src/utils/profileImageService';
+import { supabase } from '../src/utils/supabase';
 
 export default function Profile() {
+  const { user, logout } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
   const [darkModeEnabled, setDarkModeEnabled] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   
   // User data
   const [userData, setUserData] = useState({
-    name: 'Obakeng Jele',
-    email: 'obakeng.jele@example.com',
-    phone: '+268 7612 3456',
+    name: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phoneNumber || '',
     address: 'Mbabane, Eswatini'
   });
+  
+  // Initialize storage and fetch profile image
+  useEffect(() => {
+    const setup = async () => {
+      await initializeStorage();
+      
+      if (user?.id) {
+        // Check if user has a profile image in Supabase storage
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+          
+        if (data?.avatar_url) {
+          setProfileImageUrl(data.avatar_url);
+        } else {
+          // Use initials as default avatar
+          setProfileImageUrl(getInitialsAvatar(user.fullName));
+        }
+      }
+    };
+    
+    setup();
+  }, [user]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -30,16 +63,100 @@ export default function Profile() {
         },
         {
           text: 'Logout',
-          onPress: () => router.replace('/(auth)')
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)');
+          }
         }
       ]
     );
   };
 
-  const handleSaveProfile = () => {
-    // Here you would typically save the data to a backend
-    setEditMode(false);
-    Alert.alert('Success', 'Profile updated successfully');
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: userData.name,
+          email: userData.email,
+          phone_number: userData.phone,
+          address: userData.address
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        console.error('Error updating profile:', error);
+        Alert.alert('Error', 'Failed to update profile. Please try again.');
+        return;
+      }
+      
+      setEditMode(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error) {
+      console.error('Error in handleSaveProfile:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleChangeProfilePicture = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant permission to access your photos');
+        return;
+      }
+      
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setImageLoading(true);
+        
+        // Upload image to Supabase storage
+        const imageUri = result.assets[0].uri;
+        const imageUrl = await uploadProfileImage(user.id, imageUri);
+        
+        if (imageUrl) {
+          // Update profile with new avatar URL
+          const { error } = await supabase
+            .from('profiles')
+            .update({ avatar_url: imageUrl })
+            .eq('id', user.id);
+          
+          if (!error) {
+            setProfileImageUrl(imageUrl);
+            Alert.alert('Success', 'Profile picture updated successfully');
+          } else {
+            console.error('Error updating avatar URL:', error);
+            Alert.alert('Error', 'Failed to update profile picture');
+          }
+        } else {
+          Alert.alert('Error', 'Failed to upload image');
+        }
+        
+        setImageLoading(false);
+      }
+    } catch (error) {
+      console.error('Error changing profile picture:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+      setImageLoading(false);
+    }
   };
 
   return (
@@ -56,6 +173,11 @@ export default function Profile() {
       <Animated.View 
         entering={FadeIn.delay(200).duration(1000)}
         style={styles.header}>
+        <Pressable 
+          style={styles.backButton}
+          onPress={() => router.replace('/(tabs)')}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
         <Text style={styles.headerTitle}>My Profile</Text>
         {!editMode ? (
           <Pressable 
@@ -81,12 +203,21 @@ export default function Profile() {
           style={styles.profileCardGradient}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              <Image 
-                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
-                style={styles.avatar}
-              />
+              {imageLoading ? (
+                <View style={[styles.avatar, styles.avatarLoading]}>
+                  <ActivityIndicator color="#fff" size="small" />
+                </View>
+              ) : (
+                <Image 
+                  source={{ uri: profileImageUrl || getInitialsAvatar(userData.name) }}
+                  style={styles.avatar}
+                />
+              )}
               {editMode && (
-                <Pressable style={styles.changeAvatarButton}>
+                <Pressable 
+                  style={styles.changeAvatarButton}
+                  onPress={handleChangeProfilePicture}
+                >
                   <Ionicons name="camera" size={16} color="#fff" />
                 </Pressable>
               )}
@@ -127,18 +258,18 @@ export default function Profile() {
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>0</Text>
               <Text style={styles.statLabel}>Transactions</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>E350</Text>
+              <Text style={styles.statValue}>E0</Text>
               <Text style={styles.statLabel}>Spent</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statLabel}>Services</Text>
+              <Text style={styles.statValue}>{user?.accountNumber ? '1' : '0'}</Text>
+              <Text style={styles.statLabel}>Account</Text>
             </View>
           </View>
         </LinearGradient>
@@ -315,6 +446,16 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editButton: {
     width: 40,
@@ -323,6 +464,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   profileCard: {
     marginHorizontal: 20,
