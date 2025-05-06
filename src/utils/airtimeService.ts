@@ -5,6 +5,7 @@
  */
 
 import { generateUUID, getAccessToken, initiatePayment, checkPaymentStatus } from './momoApi';
+import { Momo } from './momoService';
 
 // MTN MoMo API credentials - In production, these should be stored securely
 // and potentially retrieved from a secure backend or environment variables
@@ -14,6 +15,9 @@ const MTN_CREDENTIALS = {
   subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY || 'YOUR_SUBSCRIPTION_KEY', // Will be replaced by user
   accessToken: '' // This will be populated at runtime
 };
+
+// Initialize the Momo service
+const momoService = new Momo();
 
 // Function to update credentials at runtime
 export const updateMoMoCredentials = (credentials: {
@@ -48,6 +52,100 @@ interface AirtimePurchaseResponse {
  * @returns Promise<AirtimePurchaseResponse> with transaction details
  */
 export const purchaseMtnAirtime = async (
+  request: AirtimePurchaseRequest
+): Promise<AirtimePurchaseResponse> => {
+  try {
+    // Option 1: Using the new direct Momo service
+    // Prepare the request payload for the Momo service
+    const momoRequest = {
+      amount: request.amount.toString(),
+      payer: request.payerPhoneNumber,
+      externaltransactionid: `airtime-${Date.now()}`
+    };
+    
+    // Call the momoCollect method to initiate the payment
+    const result = await momoService.momoCollect(momoRequest);
+    
+    // Extract the reference ID from the result
+    // The result format is "[response] Transaction initiated. [uuid]"
+    const referenceIdMatch = result.match(/Transaction initiated\. ([\w-]+)$/);
+    const referenceId = referenceIdMatch ? referenceIdMatch[1] : '';
+    
+    if (!referenceId) {
+      return {
+        success: false,
+        message: 'Failed to get transaction reference ID'
+      };
+    }
+    
+    // Poll for payment status (retry a few times with delay)
+    let statusResult = '';
+    let paymentStatus = { status: 'PENDING' };
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+      // Wait before checking (simulating async payment processing)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Check payment status
+      statusResult = await momoService.transactionStatus();
+      
+      try {
+        const statusData = JSON.parse(statusResult);
+        paymentStatus = { status: statusData.status };
+        
+        // If we have a final status, break out of the loop
+        if (statusData.status === 'SUCCESSFUL' || 
+            statusData.status === 'FAILED' || 
+            statusData.status === 'REJECTED') {
+          break;
+        }
+      } catch (e) {
+        console.error('Error parsing status result:', e);
+      }
+      
+      attempts++;
+    }
+    
+    if (paymentStatus.status === 'SUCCESSFUL') {
+      // Generate a transaction ID for the airtime purchase
+      const transactionId = generateUUID();
+      
+      // In a full implementation, you would call the telco's API to provision the airtime here
+      // This would typically be a separate API call to the mobile operator's provisioning system
+      // For now, we'll assume the airtime is provisioned automatically by MTN's system
+      
+      return {
+        success: true,
+        referenceId,
+        message: `Successfully purchased E${request.amount} airtime for ${request.phoneNumber}`,
+        transactionId
+      };
+    } else {
+      return {
+        success: false,
+        referenceId,
+        message: `Payment failed: ${paymentStatus.status || 'Unknown error'}`
+      };
+    }
+  } catch (error) {
+    console.error('Error purchasing airtime:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unknown error occurred'
+    };
+  }
+};
+
+/**
+ * Purchase airtime through MTN MoMo API using the legacy implementation
+ * Kept for backward compatibility
+ * 
+ * @param request AirtimePurchaseRequest object containing purchase details
+ * @returns Promise<AirtimePurchaseResponse> with transaction details
+ */
+export const purchaseMtnAirtimeLegacy = async (
   request: AirtimePurchaseRequest
 ): Promise<AirtimePurchaseResponse> => {
   try {
