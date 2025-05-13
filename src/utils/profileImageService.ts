@@ -63,32 +63,63 @@ export const uploadProfileImage = async (
     // This is more compatible with default Supabase RLS policies
     const filePath = fileName;
     
-    // Read the file as base64
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    
-    // Try to upload the file
-    try {
-      const { error } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(filePath, decode(base64), {
-          contentType: `image/${fileExt}`,
-          upsert: true,
-        });
-      
-      if (error) {
-        console.log('Error uploading image:', error.message);
-        // If we get an RLS policy error, we'll try a fallback approach
-        if (error.message.includes('policy') || error.message.includes('permission')) {
-          console.log('Permission issue detected, trying alternative approach...');
-          return await handleFallbackImageStorage(userId, uri);
+    // Different approach for web vs native platforms
+    if (Platform.OS === 'web') {
+      try {
+        // For web, we need to fetch the image and convert it to a blob
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        
+        // Upload the blob directly
+        const { error } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, blob, {
+            contentType: `image/${fileExt}`,
+            upsert: true,
+          });
+        
+        if (error) {
+          console.log('Error uploading image on web:', error.message);
+          // If we get an RLS policy error, we'll try a fallback approach
+          if (error.message.includes('policy') || error.message.includes('permission')) {
+            console.log('Permission issue detected, trying alternative approach...');
+            return await handleFallbackImageStorage(userId, uri);
+          }
+          return null;
         }
-        return null;
+      } catch (uploadError) {
+        console.log('Exception during web upload:', uploadError);
+        return await handleFallbackImageStorage(userId, uri);
       }
-    } catch (uploadError) {
-      console.log('Exception during upload:', uploadError);
-      return await handleFallbackImageStorage(userId, uri);
+    } else {
+      // Native platforms (iOS, Android) - use FileSystem
+      try {
+        // Read the file as base64
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        // Upload the file
+        const { error } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, decode(base64), {
+            contentType: `image/${fileExt}`,
+            upsert: true,
+          });
+        
+        if (error) {
+          console.log('Error uploading image on native:', error.message);
+          // If we get an RLS policy error, we'll try a fallback approach
+          if (error.message.includes('policy') || error.message.includes('permission')) {
+            console.log('Permission issue detected, trying alternative approach...');
+            return await handleFallbackImageStorage(userId, uri);
+          }
+          return null;
+        }
+      } catch (uploadError) {
+        console.log('Exception during native upload:', uploadError);
+        return await handleFallbackImageStorage(userId, uri);
+      }
     }
     
     // Get the public URL
@@ -120,18 +151,46 @@ const handleFallbackImageStorage = async (userId: string, uri: string): Promise<
     // In a production app, you might use another storage service as fallback
     console.log('Using fallback image storage mechanism');
     
-    // For now, we'll just store the image URI in local storage and return it
-    // This is a temporary solution - in production, you'd want a more robust approach
+    // For web, we can use localStorage to store the image URI
     if (Platform.OS === 'web') {
-      // For web, we can use localStorage
       try {
-        localStorage.setItem(`profile_image_${userId}`, uri);
+        // For web, we can either store the URI directly or convert to data URL
+        // If the URI is already a data URL (e.g., from a file input), we can use it directly
+        if (uri.startsWith('data:')) {
+          localStorage.setItem(`profile_image_${userId}`, uri);
+          return uri;
+        }
+        
+        // If it's a blob URL or other URL, we can try to fetch and convert to data URL
+        try {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              try {
+                localStorage.setItem(`profile_image_${userId}`, dataUrl);
+              } catch (e) {
+                console.log('LocalStorage not available:', e);
+              }
+              resolve(dataUrl);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          console.log('Error converting image to data URL:', e);
+          // If we can't convert, just return the original URI
+          return uri;
+        }
       } catch (e) {
-        console.log('LocalStorage not available:', e);
+        console.log('Error in web fallback storage:', e);
+        return uri;
       }
     }
     
-    // Return the original URI as a fallback
+    // For native platforms, just return the original URI
     return uri;
   } catch (error) {
     console.error('Error in fallback image storage:', error);

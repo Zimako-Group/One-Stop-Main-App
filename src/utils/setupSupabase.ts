@@ -8,75 +8,114 @@ export const setupSupabase = async (): Promise<boolean> => {
   try {
     console.log('Setting up Supabase database structure...');
     
-    // Check if avatar_url column exists in profiles table
-    const { data: columns, error: columnsError } = await supabase
+    // Check if profiles table exists
+    const { data: tableExists, error: tableError } = await supabase
       .from('profiles')
-      .select('avatar_url')
+      .select('count')
       .limit(1);
     
-    // If there's an error with the column query, it might mean the table doesn't exist
-    // or the column doesn't exist
-    if (columnsError) {
-      console.log('Adding avatar_url column to profiles table...');
+    if (tableError && tableError.code === '42P01') { // 42P01 is the error code for 'relation does not exist'
+      console.log('Creating profiles table...');
       
-      // Use a stored procedure to add the column safely
-      const { error: alterError } = await supabase.rpc('add_avatar_url_column');
+      // Create the profiles table if it doesn't exist
+      const { error: createTableError } = await supabase.rpc(
+        'execute_sql',
+        { sql: 'CREATE TABLE IF NOT EXISTS public.profiles (id UUID PRIMARY KEY, updated_at TIMESTAMP WITH TIME ZONE, user_id UUID UNIQUE REFERENCES auth.users(id))' }
+      );
       
-      if (alterError) {
-        // If the RPC doesn't exist, create it first
-        if (alterError.message.includes('function "add_avatar_url_column" does not exist')) {
-          // Create the function
-          const { error: createFunctionError } = await supabase
-            .from('_exec_sql')
-            .insert({
-              query: `
-                CREATE OR REPLACE FUNCTION add_avatar_url_column()
-                RETURNS void AS $$
-                BEGIN
-                  -- Check if the column exists
-                  IF NOT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_schema = 'public'
-                    AND table_name = 'profiles'
-                    AND column_name = 'avatar_url'
-                  ) THEN
-                    -- Add the column if it doesn't exist
-                    ALTER TABLE IF EXISTS public.profiles 
-                    ADD COLUMN avatar_url TEXT;
-                  END IF;
-                  
-                  -- Check if the address column exists
-                  IF NOT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_schema = 'public'
-                    AND table_name = 'profiles'
-                    AND column_name = 'address'
-                  ) THEN
-                    -- Add the column if it doesn't exist
-                    ALTER TABLE IF EXISTS public.profiles 
-                    ADD COLUMN address TEXT;
-                  END IF;
-                END;
-                $$ LANGUAGE plpgsql;
-              `
-            });
+      if (createTableError) {
+        console.error('Error creating profiles table:', createTableError);
+        return false;
+      }
+    }
+    
+    // Add avatar_url column directly with SQL
+    console.log('Checking and adding avatar_url column if needed...');
+    
+    // Use the PostgreSQL REST API to execute SQL directly
+    const { error: avatarColumnError } = await supabase.rpc(
+      'execute_sql',
+      { sql: `
+        DO $$
+        BEGIN
+          -- Check if the column exists
+          IF NOT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_schema = 'public'
+            AND table_name = 'profiles'
+            AND column_name = 'avatar_url'
+          ) THEN
+            -- Add the column if it doesn't exist
+            ALTER TABLE IF EXISTS public.profiles 
+            ADD COLUMN avatar_url TEXT;
+          END IF;
+        END
+        $$;
+      `}
+    );
+    
+    if (avatarColumnError) {
+      // If the execute_sql function doesn't exist, we need to handle this differently
+      if (avatarColumnError.message.includes('function "execute_sql" does not exist')) {
+        console.log('Using alternative method to check columns...');
+        
+        // Try to select from the profiles table to see if it exists
+        const { error: profilesError } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(1);
           
-          if (createFunctionError) {
-            console.error('Error creating function:', createFunctionError);
-            return false;
-          }
-          
-          // Try calling the function again
-          const { error: retryError } = await supabase.rpc('add_avatar_url_column');
-          if (retryError) {
-            console.error('Error adding columns after creating function:', retryError);
-            return false;
-          }
-        } else {
-          console.error('Error adding avatar_url column:', alterError);
+        if (profilesError) {
+          console.error('Error accessing profiles table:', profilesError);
           return false;
         }
+        
+        // Since we can't execute SQL directly, we'll use the REST API to check if columns exist
+        // and then use the REST API to add them if needed
+        try {
+          // First, try to select the avatar_url column to see if it exists
+          await supabase.from('profiles').select('avatar_url').limit(1);
+        } catch (columnError) {
+          // If we get an error, the column might not exist, so try to add it
+          console.log('Adding avatar_url column using REST API...');
+          // We can't directly add columns through the REST API, so we'll need to use the Supabase dashboard
+          console.error('Please add the avatar_url column to the profiles table using the Supabase dashboard');
+          // Return true to prevent blocking the app, but log a warning
+          console.warn('App will continue, but profile avatars may not work correctly');
+        }
+      } else {
+        console.error('Error adding avatar_url column:', avatarColumnError);
+        return false;
       }
+    }
+    
+    // Add address column with the same approach
+    console.log('Checking and adding address column if needed...');
+    
+    const { error: addressColumnError } = await supabase.rpc(
+      'execute_sql',
+      { sql: `
+        DO $$
+        BEGIN
+          -- Check if the column exists
+          IF NOT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_schema = 'public'
+            AND table_name = 'profiles'
+            AND column_name = 'address'
+          ) THEN
+            -- Add the column if it doesn't exist
+            ALTER TABLE IF EXISTS public.profiles 
+            ADD COLUMN address TEXT;
+          END IF;
+        END
+        $$;
+      `}
+    );
+    
+    if (addressColumnError && !addressColumnError.message.includes('function "execute_sql" does not exist')) {
+      console.error('Error adding address column:', addressColumnError);
+      return false;
     }
     
     console.log('Supabase setup completed successfully');
