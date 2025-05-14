@@ -10,6 +10,7 @@ import Animated, {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Login() {
   const { login, resetPassword, loading: authLoading } = useAuth();
@@ -66,10 +67,18 @@ export default function Login() {
       
       console.log('Attempting login with:', { phoneNumber: phoneForLogin, email });
       
-      const success = await login(email, password);
+      const result = await login(email, password);
       
-      if (success) {
-        router.push('/(tabs)');
+      if (result.success) {
+        if (result.requiresOtp) {
+          // Store phone number in AsyncStorage for OTP verification screen
+          await AsyncStorage.setItem('otpPhoneNumber', phoneNumber);
+          // Navigate to OTP verification screen using a relative path
+          router.navigate('../otp-verification');
+        } else {
+          // No OTP required (though this shouldn't happen with the new flow)
+          router.push('/(tabs)');
+        }
       } else {
         // If login fails, try alternative phone number format
         // For example, if user entered with country code but registered without it (or vice versa)
@@ -86,10 +95,15 @@ export default function Login() {
           alternativeEmail = `${withoutCountryCode}@onestop.com`;
           console.log('Trying alternative login format:', { alternativeEmail });
           
-          const alternativeSuccess = await login(alternativeEmail, password);
+          const alternativeResult = await login(alternativeEmail, password);
           
-          if (alternativeSuccess) {
-            router.push('/(tabs)');
+          if (alternativeResult.success) {
+            if (alternativeResult.requiresOtp) {
+              // Redirect to OTP verification screen
+              router.push({pathname: '/(auth)/otp-verification', params: {phoneNumber}});
+            } else {
+              router.push('/(tabs)');
+            }
             return;
           }
         } 
@@ -99,10 +113,18 @@ export default function Login() {
           alternativeEmail = `27${normalizedPhoneNumber}@onestop.com`;
           console.log('Trying with South Africa country code:', { alternativeEmail });
           
-          let alternativeSuccess = await login(alternativeEmail, password);
+          let alternativeResult = await login(alternativeEmail, password);
           
-          if (alternativeSuccess) {
-            router.push('/(tabs)');
+          if (alternativeResult.success) {
+            if (alternativeResult.requiresOtp) {
+              // Redirect to OTP verification screen with the formatted phone number
+              // Store phone number in AsyncStorage for OTP verification screen
+              await AsyncStorage.setItem('otpPhoneNumber', phoneNumber);
+              // Navigate to OTP verification screen using a relative path
+              router.navigate('../otp-verification');
+            } else {
+              router.push('/(tabs)');
+            }
             return;
           }
           
@@ -110,23 +132,31 @@ export default function Login() {
           alternativeEmail = `268${normalizedPhoneNumber}@onestop.com`;
           console.log('Trying with Eswatini country code:', { alternativeEmail });
           
-          alternativeSuccess = await login(alternativeEmail, password);
+          alternativeResult = await login(alternativeEmail, password);
           
-          if (alternativeSuccess) {
-            router.push('/(tabs)');
+          if (alternativeResult.success) {
+            if (alternativeResult.requiresOtp) {
+              // Redirect to OTP verification screen with the formatted phone number
+              router.push({
+                pathname: 'otp-verification',
+                params: { phoneNumber: `+268${normalizedPhoneNumber}` }
+              });
+            } else {
+              router.push('/(tabs)');
+            }
             return;
           }
         }
         
-        setError('Invalid phone number or password');
+        setError(result.error || 'Invalid phone number or password');
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('An error occurred during login. Please try again.');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error?.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
-  }, [phoneNumber, password, login]);
+  }, [phoneNumber, password, login, router]);
   
   const handleResetPassword = useCallback(async () => {
     try {

@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, AuthContextType } from '../types/auth';
+import { User, AuthContextType, AuthStatus, OtpVerificationResult } from '../types/auth';
 import { supabase } from '../utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateAndSendOtp, verifyOtp as verifyOtpService, clearOtpData } from '../utils/otpService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>(AuthStatus.LOGGED_OUT);
+  const [pendingUser, setPendingUser] = useState<User | null>(null); // Store user during OTP verification
 
   // Check for existing session on mount
   useEffect(() => {
@@ -27,22 +30,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', id)
           .single();
 
-        setUser({
+        const userData = {
           id,
           email: email || '',
           fullName: profileData?.full_name || '',
           phoneNumber: profileData?.phone_number || '',
           accountNumber: profileData?.account_number || ''
-        });
+        };
+
+        // Check if we need to verify OTP
+        const otpVerifiedKey = `otp_verified_${id}`;
+        const otpVerified = await AsyncStorage.getItem(otpVerifiedKey);
+        const currentDate = new Date().toDateString();
+
+        if (otpVerified === currentDate) {
+          // User already verified OTP today
+          setUser(userData);
+          setAuthStatus(AuthStatus.VERIFIED);
+        } else {
+          // User needs to verify OTP
+          setPendingUser(userData);
+          setAuthStatus(AuthStatus.AUTHENTICATED);
+          // Send OTP automatically
+          await generateAndSendOtp(id, userData.phoneNumber);
+        }
+      } else {
+        setAuthStatus(AuthStatus.LOGGED_OUT);
       }
     } catch (error) {
       console.error('Error checking user:', error);
+      setAuthStatus(AuthStatus.LOGGED_OUT);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{success: boolean, requiresOtp: boolean, error?: string}> => {
     try {
       setLoading(true);
       
@@ -54,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Login error:', error.message);
-        return false;
+        return { success: false, requiresOtp: false, error: error.message };
       }
 
       if (data.user) {
@@ -66,20 +89,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
 
         if (profileData) {
-          setUser({
+          const userData = {
             id: data.user.id,
             email: data.user.email || '',
             fullName: profileData.full_name || '',
             phoneNumber: profileData.phone_number || '',
             accountNumber: profileData.account_number || ''
-          });
-          return true;
+          };
+          
+          // Store user data temporarily until OTP verification
+          setPendingUser(userData);
+          setAuthStatus(AuthStatus.AUTHENTICATED);
+          
+          // Generate and send OTP
+          const otpResult = await generateAndSendOtp(userData.id, userData.phoneNumber);
+          
+          if (!otpResult.success) {
+            return { success: true, requiresOtp: true, error: 'Failed to send OTP. Please try again.' };
+          }
+          
+          return { success: true, requiresOtp: true };
         }
       }
-      return false;
-    } catch (error) {
+      return { success: false, requiresOtp: false, error: 'User profile not found' };
+    } catch (error: any) {
       console.error('Login error:', error);
-      return false;
+      return { success: false, requiresOtp: false, error: error?.message || 'An unknown error occurred' };
     } finally {
       setLoading(false);
     }
@@ -242,8 +277,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  /**
+   * Verify OTP entered by user
+   */
+  const verifyOtp = async (otp: string): Promise<OtpVerificationResult> => {
+    try {
+      setLoading(true);
+      
+      if (!pendingUser) {
+        return { success: false, error: 'No pending authentication found' };
+      }
+      
+      // Verify OTP
+      const result = await verifyOtpService(pendingUser.id, otp);
+      
+      if (result.valid) {
+        // Mark user as verified
+        setUser(pendingUser);
+        setPendingUser(null);
+        setAuthStatus(AuthStatus.VERIFIED);
+        
+        // Store verification status for today
+        const otpVerifiedKey = `otp_verified_${pendingUser.id}`;
+        const currentDate = new Date().toDateString();
+        await AsyncStorage.setItem(otpVerifiedKey, currentDate);
+        
+        return { success: true, user: pendingUser };
+      } else {
+        return { success: false, error: result.message };
+      }
+    } catch (error: any) {
+      console.error('Error verifying OTP:', error);
+      return { success: false, error: error?.message || 'An unknown error occurred' };
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  /**
+   * Resend OTP to user's phone number
+   */
+  const resendOtp = async (): Promise<{success: boolean, message: string}> => {
+    try {
+      setLoading(true);
+      
+      if (!pendingUser) {
+        return { success: false, message: 'No pending authentication found' };
+      }
+      
+      // Clear previous OTP data
+      await clearOtpData(pendingUser.id);
+      
+      // Generate and send new OTP
+      return await generateAndSendOtp(pendingUser.id, pendingUser.phoneNumber);
+    } catch (error: any) {
+      console.error('Error resending OTP:', error);
+      return { success: false, message: error?.message || 'An unknown error occurred' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, resetPassword, loading }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      authStatus,
+      login,
+      signup,
+      logout,
+      resetPassword,
+      verifyOtp,
+      resendOtp
+    }}>
       {children}
     </AuthContext.Provider>
   );
